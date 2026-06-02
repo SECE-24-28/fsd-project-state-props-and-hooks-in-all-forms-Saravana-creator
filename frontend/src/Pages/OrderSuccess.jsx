@@ -1,12 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getActiveUser } from '../utils/storage';
 import { getOrderById, formatOrderDate } from '../utils/orders';
 
+/*
+ * OrderSuccess Page Component
+ * ---------------------------
+ * Displays order confirmation after successful checkout.
+ * 
+ * Props received from URL:
+ *   orderId — extracted from route param "/order-success/:orderId"
+ * 
+ * Hooks used:
+ *   - useParams: to read the orderId from the URL
+ *   - useState: to store the user and order data
+ *   - useEffect: to fetch user from sessionStorage and load the order
+ */
 const OrderSuccess = () => {
+  // Extract orderId from URL route param
   const { orderId } = useParams();
-  const user = getActiveUser();
-  const order = user ? getOrderById(user.email, orderId) : null;
+
+  const [order, setOrder] = useState(null);
+
+  // Fetch user and order on component mount
+  useEffect(() => {
+    // Read active user from sessionStorage
+    const userJSON = sessionStorage.getItem('eazeit_active_user');
+    if (userJSON) {
+      const parsedUser = JSON.parse(userJSON);
+      // Fetch the order from localStorage using orderId and user email
+      if (parsedUser.email && orderId) {
+        const foundOrder = getOrderById(parsedUser.email, orderId);
+        setOrder(foundOrder);
+      }
+    }
+  }, [orderId]);
 
   return (
     <section className="py-16 px-4 md:px-6 bg-slate-900 min-h-[70vh]">
@@ -17,20 +44,38 @@ const OrderSuccess = () => {
 
         {order ? (
           <div className="text-left bg-slate-900 border border-slate-700 rounded-xl p-4 mb-6 text-sm">
-            <div className="flex justify-between mb-2"><span className="text-slate-400">Order ID</span><span className="text-white font-semibold">{order.id}</span></div>
-            <div className="flex justify-between mb-2"><span className="text-slate-400">Date</span><span className="text-white">{formatOrderDate(order.placedAt)}</span></div>
-            <div className="flex justify-between mb-2"><span className="text-slate-400">Payment</span><span className="text-white">{order.paymentMethod}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Total</span><span className="text-teal-400 font-bold">Rs. {order.total}</span></div>
+            <div className="flex justify-between mb-2">
+              <span className="text-slate-400">Order ID</span>
+              <span className="text-white font-semibold">{order.id}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="text-slate-400">Date</span>
+              <span className="text-white">{formatOrderDate(order.placedAt)}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="text-slate-400">Payment</span>
+              <span className="text-white">{order.paymentMethod}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Total</span>
+              <span className="text-teal-400 font-bold">Rs. {order.total}</span>
+            </div>
           </div>
         ) : (
           <p className="text-slate-400 text-sm mb-6">Order details are not available.</p>
         )}
 
         <div className="flex flex-col sm:flex-row justify-center gap-3">
-          <Link to="/profile?tab=orders-tab" className="bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-5 py-3 rounded-lg transition-all duration-200 active:scale-95">
+          <Link 
+            to="/profile?tab=orders-tab" 
+            className="bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-5 py-3 rounded-lg transition-all duration-200 active:scale-95"
+          >
             View Orders
           </Link>
-          <Link to="/products" className="bg-transparent border border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-5 py-3 rounded-lg transition-all duration-200 active:scale-95">
+          <Link 
+            to="/products" 
+            className="bg-transparent border border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-5 py-3 rounded-lg transition-all duration-200 active:scale-95"
+          >
             Continue Shopping
           </Link>
         </div>

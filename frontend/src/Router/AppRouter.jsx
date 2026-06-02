@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { showToast } from '../components/Toast';
+import React from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Home from '../pages/Home';
 import Products from '../pages/Products';
 import Login from '../pages/Login';
@@ -19,36 +18,23 @@ import OrderSuccess from '../pages/OrderSuccess';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-// Layout wrapper to conditionally render Navbar and Footer (hiding on Admin pages)
+/**
+ * AppLayout
+ * ---------
+ * Wraps all pages with Navbar + Footer, hiding them on the Admin page.
+ * Navbar is self-contained (manages its own user state via sessionStorage).
+ *
+ * Props received via children (React pattern).
+ */
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const navigate = useNavigate();
+  // Hide Navbar & Footer on the admin panel
   const isAdmin = location.pathname.toLowerCase() === '/admin';
 
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const activeUserJSON = localStorage.getItem('eazeit_active_user');
-    if (activeUserJSON) {
-      setUser(JSON.parse(activeUserJSON));
-    } else {
-      setUser(null);
-    }
-  }, [location.pathname]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('eazeit_active_user');
-    setUser(null);
-    showToast('Logged out successfully. See you soon!');
-    setTimeout(() => {
-      navigate('/');
-    }, 1200);
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-slate-900 text-white font-sans antialiased">
-      {!isAdmin && <Navbar user={user} handleLogout={handleLogout} />}
-      <main className="flex-grow">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0f172a', color: '#fff' }}>
+      {!isAdmin && <Navbar />}
+      <main style={{ flex: 1 }}>
         {children}
       </main>
       {!isAdmin && <Footer />}
@@ -83,4 +69,3 @@ const AppRouter = () => {
 };
 
 export default AppRouter;
-

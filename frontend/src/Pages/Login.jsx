@@ -1,14 +1,28 @@
-import React, { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { showToast } from '../components/Toast';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const redirectTo = useMemo(() => searchParams.get('redirect') || '/', [searchParams]);
+
+  // Toast notifier
+  const triggerToast = (message, isError = false) => {
+    const toast = document.createElement('div');
+    const bgClass = isError ? 'bg-rose-500 text-white' : 'bg-teal-400 text-slate-900';
+    toast.className = `fixed bottom-5 right-5 ${bgClass} font-bold px-6 py-4 rounded-lg shadow-2xl z-[9999] transition-all duration-300 transform translate-y-0 opacity-100 flex items-center gap-2`;
+    toast.innerHTML = `<span>${message}</span>`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3000);
+  };
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -26,13 +40,13 @@ const Login = () => {
           email: ADMIN_EMAIL,
           role: 'admin'
         };
-        localStorage.setItem('eazeit_active_user', JSON.stringify(adminUser));
-        showToast('Admin login successful! Redirecting to Admin Panel...');
+        sessionStorage.setItem('eazeit_active_user', JSON.stringify(adminUser));
+        triggerToast('Admin login successful! Redirecting to Admin Panel...', false);
         setTimeout(() => {
           navigate('/admin');
         }, 1200);
       } else {
-        showToast('Incorrect admin password. Please try again.', true);
+        triggerToast('Incorrect admin password. Please try again.', true);
         setPassword('');
       }
       return;
@@ -45,13 +59,13 @@ const Login = () => {
     );
 
     if (matchedUser && matchedUser.password === password) {
-      localStorage.setItem('eazeit_active_user', JSON.stringify(matchedUser));
-      showToast(`Login successful! Welcome back, ${matchedUser.firstName}.`);
+      sessionStorage.setItem('eazeit_active_user', JSON.stringify(matchedUser));
+      triggerToast(`Login successful! Welcome back, ${matchedUser.firstName}.`, false);
       setTimeout(() => {
-        navigate(redirectTo);
+        navigate('/');
       }, 1200);
     } else {
-      showToast('Invalid Email Address or Password. Please try again.', true);
+      triggerToast('Invalid Email Address or Password. Please try again.', true);
       setPassword('');
     }
   };

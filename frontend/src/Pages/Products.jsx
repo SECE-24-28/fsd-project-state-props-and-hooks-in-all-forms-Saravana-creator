@@ -1,37 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
-import { showToast } from '../components/Toast';
-
-// ── Static hardcoded products ──────────────────────────────────────────────
-const STATIC_PRODUCTS = [
-  { id: 's1', name: 'Colgate Strong Teeth Toothpaste', category: 'Oral Care', brand: 'Colgate', price: 45, mrp: 50, unit: '200g + 160g Pack', badge: 'Best Seller', image: 'images/colgate.jpg' },
-  { id: 's2', name: 'Colgate Total Advanced Whitening', category: 'Oral Care', brand: 'Colgate', price: 29, mrp: 30, unit: '150g Tube', badge: '', image: 'images/colgate.jpg' },
-  { id: 's3', name: 'Colgate Cavity Protection Paste', category: 'Oral Care', brand: 'Colgate', price: 35, mrp: 36, unit: '100g Tube', badge: 'New', image: 'images/colgate.jpg' },
-  { id: 's4', name: 'Harpic Power Plus Original', category: 'Household', brand: 'Harpic', price: 89, mrp: 95, unit: '500ml Bottle', badge: 'Popular', image: 'images/harpic.jpg' },
-  { id: 's5', name: 'Harpic Sparkling Lemon Cleaner', category: 'Household', brand: 'Harpic', price: 79, mrp: 89, unit: '500ml Bottle', badge: '', image: 'images/harpic.jpg' },
-  { id: 's6', name: 'Harpic White & Shine Bleach', category: 'Household', brand: 'Harpic', price: 129, mrp: 165, unit: '1 Litre Bottle', badge: '10X Action', image: 'images/harpic.jpg' },
-  { id: 's7', name: 'Godrej No.1 Aloe Vera Soap', category: 'Bath & Body', brand: 'Godrej', price: 99, mrp: 140, unit: 'Pack of 4 x 100g', badge: 'Value Pack', image: 'images/godrej-soap.jpg' },
-  { id: 's8', name: 'Godrej No.1 Sandal Soap', category: 'Bath & Body', brand: 'Godrej', price: 79, mrp: 110, unit: 'Pack of 3 x 100g', badge: '', image: 'images/godrej-soap.jpg' },
-  { id: 's9', name: 'Tata Salt Iodised', category: 'Food & Snacks', brand: 'Others', price: 24, mrp: 30, unit: '1 kg Pack', badge: 'New', image: '' },
-  { id: 's10', name: 'Aashirvaad Whole Wheat Atta', category: 'Food & Snacks', brand: 'Others', price: 249, mrp: 310, unit: '5 kg Bag', badge: '', image: '' },
-];
+import { Link, useSearchParams } from 'react-router-dom';
+import { useProducts } from '../context/ProductContext';
+import ProductCard from '../components/ProductCard';
 
 const CATEGORIES = ['All Products', 'Oral Care', 'Household', 'Bath & Body', 'Food & Snacks'];
 
-
-const CAT_EMOJI = {
-  'Oral Care': '🦷', 'Household': '🧹', 'Bath & Body': '🧼',
-  'Food & Snacks': '🍎', 'Personal Care': '💊', 'Beverages': '☕', 'Dairy': '🥛', 'Others': '📦'
-};
-
 const Products = () => {
-  const navigate = useNavigate();
+  // ── Context / Router hooks ────────────────────────────────────────────────
+  const { products } = useProducts();
   const [searchParams] = useSearchParams();
-  const [user, setUser] = useState(null);
-  const { addToCart } = useCart();
 
-  // Filter & search state
+  // ── Filter & Search State ─────────────────────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState('All Products');
   const [selectedBrand, setSelectedBrand] = useState('All Brands');
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,98 +19,79 @@ const Products = () => {
   const [maxPrice, setMaxPrice] = useState('');
   const [activePriceRange, setActivePriceRange] = useState({ min: '', max: '' });
 
-  // Admin-added products from localStorage
-  const [adminProducts, setAdminProducts] = useState([]);
-
+  // ── Sync URL params on mount ──────────────────────────────────────────────
   useEffect(() => {
-    const userJSON = localStorage.getItem('eazeit_active_user');
-    if (userJSON) setUser(JSON.parse(userJSON));
-    const stored = JSON.parse(localStorage.getItem('eazeit_admin_products')) || [];
-    setAdminProducts(stored);
     const searchFromUrl = searchParams.get('search');
     if (searchFromUrl) setSearchQuery(searchFromUrl);
+
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl && CATEGORIES.includes(categoryFromUrl)) {
+      setSelectedCategory(categoryFromUrl);
+    }
   }, [searchParams]);
 
-  // Merge static + admin products
-  const allProducts = useMemo(() => [...STATIC_PRODUCTS, ...adminProducts], [adminProducts]);
-
-  // Build dynamic category counts
+  // ── Derived: dynamic category counts ─────────────────────────────────────
   const categoryCounts = useMemo(() => {
     const counts = {};
-    allProducts.forEach(p => {
+    products.forEach((p) => {
       counts[p.category] = (counts[p.category] || 0) + 1;
     });
     return counts;
-  }, [allProducts]);
+  }, [products]);
 
-  // Build dynamic brand counts
+  // ── Derived: dynamic brand counts ────────────────────────────────────────
   const brandCounts = useMemo(() => {
     const counts = {};
-    allProducts.forEach(p => {
+    products.forEach((p) => {
       const b = p.brand || 'Others';
       counts[b] = (counts[b] || 0) + 1;
     });
     return counts;
-  }, [allProducts]);
+  }, [products]);
 
-  // All available brands from combined products
   const allBrands = useMemo(() => {
-    const brands = new Set(allProducts.map(p => p.brand || 'Others'));
+    const brands = new Set(products.map((p) => p.brand || 'Others'));
     return ['All Brands', ...Array.from(brands)];
-  }, [allProducts]);
+  }, [products]);
 
-  // Filtered + sorted result
+  // ── Filtered + Sorted products ────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
+    let result = [...products];
 
-    // Category filter
     if (selectedCategory !== 'All Products') {
-      result = result.filter(p => p.category === selectedCategory);
+      result = result.filter((p) => p.category === selectedCategory);
     }
 
-    // Brand filter
     if (selectedBrand !== 'All Brands') {
-      result = result.filter(p => (p.brand || 'Others') === selectedBrand);
+      result = result.filter((p) => (p.brand || 'Others') === selectedBrand);
     }
 
-    // Price range filter
     if (activePriceRange.min !== '') {
-      result = result.filter(p => p.price >= Number(activePriceRange.min));
+      result = result.filter((p) => p.price >= Number(activePriceRange.min));
     }
     if (activePriceRange.max !== '') {
-      result = result.filter(p => p.price <= Number(activePriceRange.max));
+      result = result.filter((p) => p.price <= Number(activePriceRange.max));
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        (p.brand || '').toLowerCase().includes(q)
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.brand || '').toLowerCase().includes(q)
       );
     }
 
-    // Sort
     if (sortBy === 'price-low') result.sort((a, b) => a.price - b.price);
     else if (sortBy === 'price-high') result.sort((a, b) => b.price - a.price);
-    else if (sortBy === 'newest') result.sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
+    else if (sortBy === 'newest')
+      result.sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
 
     return result;
-  }, [allProducts, selectedCategory, selectedBrand, activePriceRange, searchQuery, sortBy]);
+  }, [products, selectedCategory, selectedBrand, activePriceRange, searchQuery, sortBy]);
 
-  const handleBuyNow = (product) => {
-    addToCart(product, 1);
-    showToast('Item added to cart.');
-    if (!user) navigate('/login?redirect=/cart');
-    else navigate('/cart');
-  };
-
-  const handleAddToCart = (product) => {
-    addToCart(product, 1);
-    showToast('Item added to cart.');
-  };
-
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const applyPriceFilter = () => {
     setActivePriceRange({ min: minPrice, max: maxPrice });
   };
@@ -140,6 +100,13 @@ const Products = () => {
     setMinPrice('');
     setMaxPrice('');
     setActivePriceRange({ min: '', max: '' });
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategory('All Products');
+    setSelectedBrand('All Brands');
+    setSearchQuery('');
+    clearPriceFilter();
   };
 
   return (
@@ -186,7 +153,7 @@ const Products = () => {
             <div className="mb-8">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-3 border-b border-slate-700">Categories</h3>
               <div className="flex flex-col gap-1.5">
-                {CATEGORIES.map(cat => (
+                {CATEGORIES.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
@@ -194,7 +161,7 @@ const Products = () => {
                   >
                     <span>{cat}</span>
                     <span className={`text-xs ${selectedCategory === cat ? 'text-teal-400' : 'text-slate-400'}`}>
-                      {cat === 'All Products' ? allProducts.length : (categoryCounts[cat] || 0)}
+                      {cat === 'All Products' ? products.length : (categoryCounts[cat] || 0)}
                     </span>
                   </button>
                 ))}
@@ -238,7 +205,7 @@ const Products = () => {
             <div>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-3 border-b border-slate-700">Brands</h3>
               <div className="flex flex-col gap-1.5">
-                {allBrands.map(brand => (
+                {allBrands.map((brand) => (
                   <button
                     key={brand}
                     onClick={() => setSelectedBrand(brand)}
@@ -246,7 +213,7 @@ const Products = () => {
                   >
                     <span>{brand}</span>
                     <span className={`text-xs ${selectedBrand === brand ? 'text-teal-400' : 'text-slate-400'}`}>
-                      {brand === 'All Brands' ? allProducts.length : (brandCounts[brand] || 0)}
+                      {brand === 'All Brands' ? products.length : (brandCounts[brand] || 0)}
                     </span>
                   </button>
                 ))}
@@ -317,14 +284,14 @@ const Products = () => {
               </div>
             )}
 
-            {/* Product Grid */}
+            {/* Product Grid – uses reusable ProductCard component with product prop */}
             {filteredProducts.length === 0 ? (
               <div className="py-20 flex flex-col items-center gap-4 text-center">
                 <div className="text-5xl">&#128269;</div>
                 <h3 className="text-lg font-bold text-white">No products found</h3>
                 <p className="text-slate-400 text-sm">Try a different keyword or browse all products.</p>
                 <button
-                  onClick={() => { setSelectedCategory('All Products'); setSelectedBrand('All Brands'); setSearchQuery(''); clearPriceFilter(); }}
+                  onClick={clearAllFilters}
                   className="mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-2 rounded-lg transition-all active:scale-95"
                 >
                   Clear All Filters
@@ -332,61 +299,9 @@ const Products = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => (
-                  <div
-                    key={product.id}
-                    className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden transition-all duration-300 hover:border-teal-400 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between"
-                  >
-                    <div className="relative w-full h-48 bg-slate-800 border-b border-slate-700 overflow-hidden flex items-center justify-center">
-                      {product.image ? (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                        />
-                      ) : null}
-                      {!product.image && (
-                        <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                          <span className="text-4xl">{CAT_EMOJI[product.category] || '📦'}</span>
-                        </div>
-                      )}
-                      {product.badge && (
-                        <span className="absolute top-3 left-3 bg-teal-400 text-slate-900 text-[10px] font-extrabold px-2.5 py-0.5 rounded uppercase tracking-wider">
-                          {product.badge}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="text-[10px] text-teal-400 font-bold uppercase tracking-wider mb-1.5">{product.category}</div>
-                        <h3 className="text-sm font-semibold text-white mb-1.5 leading-snug line-clamp-2">{product.name}</h3>
-                        <div className="text-xs text-slate-400 mb-4">{product.unit}</div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-lg font-bold text-teal-400">Rs. {product.price}</span>
-                          {product.mrp && product.mrp > product.price && (
-                            <span className="text-xs text-slate-400 line-through">Rs. {product.mrp}</span>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleBuyNow(product)}
-                            className="flex-1 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-xs py-2 px-3 rounded-lg text-center transition-all duration-200 active:scale-95"
-                          >
-                            Buy Now
-                          </button>
-                          <button
-                            onClick={() => handleAddToCart(product)}
-                            className="flex-1 bg-transparent hover:bg-teal-400 text-teal-400 hover:text-slate-900 border border-teal-400/50 hover:border-teal-400 font-bold text-xs py-2 px-3 rounded-lg text-center transition-all duration-200 active:scale-95"
-                          >
-                            Add to Cart
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {filteredProducts.map((product) => (
+                  /* Each ProductCard receives a product prop */
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}

@@ -1,24 +1,63 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getJSON, setJSON, STORAGE_KEYS } from '../utils/storage';
 import { showToast } from '../components/Toast';
 
+/*
+ * Contact Page Component
+ * ----------------------
+ * Displays contact information and a form to send messages.
+ * 
+ * Hooks used:
+ *   - useState: to manage form inputs (controlled components pattern)
+ * 
+ * Props: None
+ */
 const Contact = () => {
+  // State for all form fields (controlled inputs)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+  });
+
+  // Handle input changes for all fields
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+
+    // Build the payload with trimmed values
     const payload = {
-      name: String(formData.get('name') || '').trim(),
-      email: String(formData.get('email') || '').trim(),
-      phone: String(formData.get('phone') || '').trim(),
-      subject: String(formData.get('subject') || '').trim(),
-      message: String(formData.get('message') || '').trim(),
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      subject: formData.subject.trim(),
+      message: formData.message.trim(),
       createdAt: new Date().toISOString(),
     };
+
+    // Save to localStorage
     const list = getJSON(STORAGE_KEYS.CONTACT_MESSAGES, []) || [];
     list.unshift(payload);
     setJSON(STORAGE_KEYS.CONTACT_MESSAGES, list);
-    e.currentTarget.reset();
+
+    // Reset form fields
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      subject: '',
+      message: '',
+    });
+
+    // Show success toast
     showToast('Message sent successfully. We will get back to you soon.');
   };
 
@@ -84,23 +123,67 @@ const Contact = () => {
                   <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                       <div className="flex flex-col gap-1.5">
                           <label htmlFor="contact-name" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Full Name</label>
-                          <input type="text" id="contact-name" name="name" placeholder="Enter your full name" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" />
+                          <input 
+                            type="text" 
+                            id="contact-name" 
+                            name="name" 
+                            value={formData.name}
+                            onChange={handleChange}
+                            placeholder="Enter your full name" 
+                            required 
+                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
+                          />
                       </div>
                       <div className="flex flex-col gap-1.5">
                           <label htmlFor="contact-email" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Email Address</label>
-                          <input type="email" id="contact-email" name="email" placeholder="Enter your email address" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" />
+                          <input 
+                            type="email" 
+                            id="contact-email" 
+                            name="email" 
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="Enter your email address" 
+                            required 
+                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
+                          />
                       </div>
                       <div className="flex flex-col gap-1.5">
                           <label htmlFor="contact-phone" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Phone Number</label>
-                          <input type="tel" id="contact-phone" name="phone" placeholder="Enter your mobile number" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" />
+                          <input 
+                            type="tel" 
+                            id="contact-phone" 
+                            name="phone" 
+                            value={formData.phone}
+                            onChange={handleChange}
+                            placeholder="Enter your mobile number" 
+                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
+                          />
                       </div>
                       <div className="flex flex-col gap-1.5">
                           <label htmlFor="contact-subject" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Subject</label>
-                          <input type="text" id="contact-subject" name="subject" placeholder="What is this regarding?" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" />
+                          <input 
+                            type="text" 
+                            id="contact-subject" 
+                            name="subject" 
+                            value={formData.subject}
+                            onChange={handleChange}
+                            placeholder="What is this regarding?" 
+                            required 
+                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
+                          />
                       </div>
                       <div className="flex flex-col gap-1.5">
                           <label htmlFor="contact-message" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Your Message</label>
-                          <textarea id="contact-message" name="message" placeholder="Write your message here..." rows="4" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors resize-y"></textarea>
+                          <textarea 
+                            id="contact-message" 
+                            name="message" 
+                            value={formData.message}
+                            onChange={handleChange}
+                            placeholder="Write your message here..." 
+                            rows="4" 
+                            required 
+                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors resize-y"
+                          ></textarea>
                       </div>
                       <button type="submit" className="w-full mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3.5 rounded-lg transition-all duration-200 active:scale-95 shadow-lg shadow-teal-400/20">Send Message</button>
                   </form>
@@ -111,4 +194,5 @@ const Contact = () => {
     </>
   );
 };
+
 export default Contact;

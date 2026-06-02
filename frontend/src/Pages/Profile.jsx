@@ -1,63 +1,106 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getOrdersForUser, formatOrderDate } from '../utils/orders';
-import { getAddressesForUser, deleteAddress, seedDefaultAddresses } from '../utils/addresses';
-import { showToast } from '../components/Toast';
+import { getAddressesForUser, deleteAddress } from '../utils/addresses';
 
+/*
+ * Profile Page Component
+ * ----------------------
+ * Displays user profile info, order history, and saved addresses.
+ * Uses hooks:
+ *   - useState: to manage local state (user, activeTab, form data, errors)
+ *   - useEffect: to fetch user from sessionStorage & load orders/addresses
+ *   - useNavigate: to redirect user to login if not authenticated
+ */
 const Profile = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('profile-tab');
-  const [orders, setOrders] = useState([]);
-  const [addresses, setAddresses] = useState([]);
 
-  // Edit form state
+  // ── State for user info ──────────────────────────────────────────────────
+  const [user, setUser] = useState(null);
+
+  // ── State for active tab (profile, orders, addresses) ────────────────────
+  const [activeTab, setActiveTab] = useState('profile-tab');
+
+  // ── State for edit form ──────────────────────────────────────────────────
   const [editForm, setEditForm] = useState({ firstname: '', lastname: '', mobile: '', password: '' });
   const [editErrors, setEditErrors] = useState({ firstname: '', lastname: '', mobile: '', password: '' });
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Auth guard: redirect if no session
+  // ── State for orders & addresses loaded from localStorage ────────────────
+  const [orders, setOrders] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+
+  // ── Auth Guard: redirect to login if no user in sessionStorage ──────────
   useEffect(() => {
-    const userJSON = localStorage.getItem('eazeit_active_user');
+    const userJSON = sessionStorage.getItem('eazeit_active_user');
     if (!userJSON) {
       navigate('/login');
       return;
     }
     const parsedUser = JSON.parse(userJSON);
     setUser(parsedUser);
+
+    // Populate edit form with current user data
     setEditForm({
       firstname: parsedUser.firstName || '',
       lastname: parsedUser.lastName || '',
       mobile: parsedUser.mobile || '',
       password: ''
     });
-    seedDefaultAddresses(parsedUser.email);
-    setOrders(getOrdersForUser(parsedUser.email));
-    setAddresses(getAddressesForUser(parsedUser.email));
+
+    // Load orders and addresses from localStorage
+    if (parsedUser.email) {
+      const userOrders = getOrdersForUser(parsedUser.email);
+      setOrders(userOrders);
+
+      const userAddresses = getAddressesForUser(parsedUser.email);
+      setAddresses(userAddresses);
+    }
   }, [navigate]);
 
+  // ── Sync activeTab from URL query param (if provided) ────────────────────
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) setActiveTab(tab);
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && ['profile-tab', 'orders-tab', 'addresses-tab'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
   }, [searchParams]);
 
+  // ── Toast helper ─────────────────────────────────────────────────────────
+  const triggerToast = (message, isError = false) => {
+    const toast = document.createElement('div');
+    const bgClass = isError ? 'bg-rose-500 text-white' : 'bg-teal-400 text-slate-900';
+    toast.className = `fixed bottom-5 right-5 ${bgClass} font-bold px-6 py-4 rounded-lg shadow-2xl z-[9999] transition-all duration-300 transform translate-y-0 opacity-100 flex items-center gap-2`;
+    toast.innerHTML = `<span>${message}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  };
+
+  // ── Logout handler ───────────────────────────────────────────────────────
   const handleLogout = () => {
-    localStorage.removeItem('eazeit_active_user');
-    showToast('Logged out successfully. See you soon!');
+    sessionStorage.removeItem('eazeit_active_user');
+    triggerToast('Logged out successfully. See you soon!', false);
     setTimeout(() => navigate('/'), 1200);
   };
 
+  // ── Edit form change handler ─────────────────────────────────────────────
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm(prev => ({ ...prev, [name]: value }));
     setEditErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  // ── Profile edit submit handler ──────────────────────────────────────────
   const handleProfileSubmit = (e) => {
     e.preventDefault();
     if (!user) return;
 
+    // Validation
     const nameRegex = /^[a-zA-Z]+$/;
     const mobileRegex = /^[6-9][0-9]{9}$/;
     let hasErrors = false;
@@ -104,26 +147,33 @@ const Profile = () => {
     }
 
     const updatedUser = { ...user, firstName: editForm.firstname.trim(), lastName: editForm.lastname.trim(), mobile: editForm.mobile.trim() };
-    localStorage.setItem('eazeit_active_user', JSON.stringify(updatedUser));
+    sessionStorage.setItem('eazeit_active_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
     setEditForm(prev => ({ ...prev, password: '' }));
-    showToast('Profile updated successfully!');
+    triggerToast('Profile updated successfully!', false);
   };
 
+  // ── Address delete handler ───────────────────────────────────────────────
   const handleDeleteAddress = (addressId) => {
+    if (!window.confirm('Are you sure you want to delete this address?')) return;
     if (!user) return;
-    const updated = deleteAddress(user.email, addressId);
-    setAddresses(updated);
-    showToast('Address removed.');
+    
+    deleteAddress(user.email, addressId);
+    const updatedAddresses = getAddressesForUser(user.email);
+    setAddresses(updatedAddresses);
+    triggerToast('Address deleted successfully.', false);
   };
 
+  // ── Get user initials for avatar ─────────────────────────────────────────
   const getInitials = () => {
     if (!user) return 'U';
     return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || 'U';
   };
 
+  // If no user, don't render anything (useEffect will redirect)
   if (!user) return null;
 
+  // ── Tab button class helper ──────────────────────────────────────────────
   const tabBtnClass = (tab) =>
     `w-full text-left px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center gap-3 ${activeTab === tab ? 'bg-teal-400 text-slate-950' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`;
 
@@ -188,17 +238,17 @@ const Profile = () => {
             {/*  Dashboard Menu Toggles  */}
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg shadow-slate-950/20 flex flex-col gap-2">
               <button onClick={() => setActiveTab('profile-tab')} id="btn-profile-tab" className={tabBtnClass('profile-tab')}>
-                &#9998; Edit Account Credentials
+                ✏️ Edit Account Credentials
               </button>
               <button onClick={() => setActiveTab('orders-tab')} id="btn-orders-tab" className={tabBtnClass('orders-tab')}>
-                &#128666; Order History
+                🚚 Order History
               </button>
               <button onClick={() => setActiveTab('addresses-tab')} id="btn-addresses-tab" className={tabBtnClass('addresses-tab')}>
-                &#128205; Saved Addresses
+                📍 Saved Addresses
               </button>
               {user.role === 'admin' && (
                 <Link to="/admin" className="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-slate-300 hover:bg-teal-400/10 hover:text-teal-400 transition-all duration-200 flex items-center gap-3">
-                  &#128202; Admin Panel
+                  📊 Admin Panel
                 </Link>
               )}
             </div>
@@ -265,10 +315,11 @@ const Profile = () => {
                         />
                         <button type="button" id="toggle-edit-password" onClick={() => setShowEditPassword(!showEditPassword)}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-teal-400 transition-colors">
-                          {showEditPassword
-                            ? <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
-                            : <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          }
+                          {showEditPassword ? (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                          ) : (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          )}
                         </button>
                       </div>
                       {editErrors.password && <span className="text-rose-500 text-[10px] mt-0.5">{editErrors.password}</span>}
@@ -289,8 +340,13 @@ const Profile = () => {
                 <p className="text-slate-400 text-xs md:text-sm mb-6">Review your past grocery and daily essentials orders purchased from EAZEIT.</p>
 
                 {orders.length === 0 ? (
-                  <div className="border border-slate-700/80 rounded-xl p-6 bg-slate-900/30 text-center text-sm text-slate-400">
-                    No orders yet. Place your first order from the products page.
+                  <div className="text-center py-10">
+                    <div className="text-5xl mb-3">📦</div>
+                    <h4 className="text-lg font-bold text-white mb-2">No orders yet</h4>
+                    <p className="text-slate-400 text-sm mb-5">Start shopping to see your order history here.</p>
+                    <Link to="/products" className="inline-block bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3 rounded-lg transition-all duration-200 active:scale-95">
+                      Browse Products
+                    </Link>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-5">
@@ -300,13 +356,12 @@ const Profile = () => {
                           <div className="w-12 h-12 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center text-sm font-bold text-teal-400">EZ</div>
                           <div>
                             <div className="text-sm font-semibold text-white">Order #{order.id}</div>
-                            <div className="text-xs text-slate-400">{formatOrderDate(order.placedAt)} &bull; {order.items.length} Items &bull; Rs. {order.total}</div>
-                            <div className="text-[10px] text-slate-500 mt-1">{order.items.map((item) => item.name).join(', ')}</div>
+                            <div className="text-xs text-slate-400">{formatOrderDate(order.placedAt)} • {order.items.length} Items • Rs. {order.total}</div>
+                            <div className="text-[10px] text-slate-500 mt-1">{order.items.map(i => i.name).join(', ').slice(0, 60)}...</div>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 text-right">
-                          <span className="bg-teal-400/10 text-teal-400 font-bold text-[10px] uppercase px-2.5 py-1 rounded-full border border-teal-400/20">{order.status || 'Delivered'}</span>
-                          <span className="text-[10px] text-slate-500">{formatOrderDate(order.placedAt)}</span>
+                          <span className="bg-teal-400/10 text-teal-400 font-bold text-[10px] uppercase px-2.5 py-1 rounded-full border border-teal-400/20">{order.status}</span>
                         </div>
                       </div>
                     ))}
@@ -321,25 +376,33 @@ const Profile = () => {
                 <h3 className="font-serif font-bold text-xl text-white mb-2">Saved Delivery Addresses</h3>
                 <p className="text-slate-400 text-xs md:text-sm mb-6">Manage your saved home, office, and other shipping destinations.</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {addresses.map((address) => (
-                    <div key={address.id} className="border border-slate-700/80 rounded-xl p-4 bg-slate-900/30 relative">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-teal-400 text-xs font-bold mr-1">{address.label}</span>
-                        <span className="text-sm font-bold text-white">{address.name}</span>
-                        {address.isDefault && <span className="text-[9px] bg-teal-400/10 border border-teal-400/30 text-teal-400 font-semibold px-2 py-0.5 rounded-full ml-auto">Default</span>}
+                {addresses.length === 0 ? (
+                  <div className="text-center py-10">
+                    <div className="text-5xl mb-3">📍</div>
+                    <h4 className="text-lg font-bold text-white mb-2">No addresses saved</h4>
+                    <p className="text-slate-400 text-sm mb-5">Add an address during checkout to save it for future orders.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {addresses.map((addr) => (
+                      <div key={addr.id} className="border border-slate-700/80 rounded-xl p-4 bg-slate-900/30 relative">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-teal-400 text-xs font-bold mr-1">{addr.label}</span>
+                          <span className="text-sm font-bold text-white">{addr.name}</span>
+                          {addr.isDefault && <span className="text-[9px] bg-teal-400/10 border border-teal-400/30 text-teal-400 font-semibold px-2 py-0.5 rounded-full ml-auto">Default</span>}
+                        </div>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          {addr.line1}, {addr.line2}<br />
+                          {addr.city}, {addr.pincode}<br />
+                          Phone: {addr.phone}
+                        </p>
+                        <div className="mt-4 flex gap-3 text-[10px]">
+                          <button onClick={() => handleDeleteAddress(addr.id)} className="text-rose-400 font-bold hover:underline">Delete</button>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">
-                        {address.line1}, {address.line2}<br />
-                        {address.city} - {address.pincode}
-                      </p>
-                      <div className="mt-4 flex gap-3 text-[10px]">
-                        <button className="text-slate-400 font-bold">Phone: {address.phone}</button>
-                        <button onClick={() => handleDeleteAddress(address.id)} className="text-rose-400 font-bold hover:underline">Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

@@ -25,9 +25,10 @@ export const SESSION_KEYS = {
   ACTIVE_USER: 'eazeit_active_user',
 };
 
+// NOTE: Login/Signup store the active user in sessionStorage, so we read from there.
 export function getActiveUser() {
   try {
-    const raw = localStorage.getItem(SESSION_KEYS.ACTIVE_USER);
+    const raw = sessionStorage.getItem(SESSION_KEYS.ACTIVE_USER);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
