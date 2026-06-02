@@ -26,7 +26,7 @@ const Login = () => {
           email: ADMIN_EMAIL,
           role: 'admin'
         };
-        sessionStorage.setItem('eazeit_active_user', JSON.stringify(adminUser));
+        localStorage.setItem('eazeit_active_user', JSON.stringify(adminUser));
         showToast('Admin login successful! Redirecting to Admin Panel...');
         setTimeout(() => {
           navigate('/admin');
@@ -45,7 +45,7 @@ const Login = () => {
     );
 
     if (matchedUser && matchedUser.password === password) {
-      sessionStorage.setItem('eazeit_active_user', JSON.stringify(matchedUser));
+      localStorage.setItem('eazeit_active_user', JSON.stringify(matchedUser));
       showToast(`Login successful! Welcome back, ${matchedUser.firstName}.`);
       setTimeout(() => {
         navigate(redirectTo);

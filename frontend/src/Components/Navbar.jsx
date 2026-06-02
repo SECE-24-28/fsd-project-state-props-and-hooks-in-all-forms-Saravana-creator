@@ -3,32 +3,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { showToast } from './Toast';
 
-const Navbar = () => {
-  const [user, setUser] = useState(null);
+const Navbar = ({ user, handleLogout }) => {
   const [searchText, setSearchText] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
   const { cartCount } = useCart();
-
-  useEffect(() => {
-    const activeUserJSON = sessionStorage.getItem('eazeit_active_user');
-    if (activeUserJSON) {
-      setUser(JSON.parse(activeUserJSON));
-    } else {
-      setUser(null);
-    }
-  }, [location.pathname]);
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('eazeit_active_user');
-    setUser(null);
-    
-    showToast('Logged out successfully. See you soon!');
-
-    setTimeout(() => {
-      navigate('/');
-    }, 1200);
-  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

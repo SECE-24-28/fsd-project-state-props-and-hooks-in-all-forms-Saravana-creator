@@ -19,7 +19,7 @@ const Profile = () => {
 
   // Auth guard: redirect if no session
   useEffect(() => {
-    const userJSON = sessionStorage.getItem('eazeit_active_user');
+    const userJSON = localStorage.getItem('eazeit_active_user');
     if (!userJSON) {
       navigate('/login');
       return;
@@ -43,7 +43,7 @@ const Profile = () => {
   }, [searchParams]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('eazeit_active_user');
+    localStorage.removeItem('eazeit_active_user');
     showToast('Logged out successfully. See you soon!');
     setTimeout(() => navigate('/'), 1200);
   };
@@ -104,7 +104,7 @@ const Profile = () => {
     }
 
     const updatedUser = { ...user, firstName: editForm.firstname.trim(), lastName: editForm.lastname.trim(), mobile: editForm.mobile.trim() };
-    sessionStorage.setItem('eazeit_active_user', JSON.stringify(updatedUser));
+    localStorage.setItem('eazeit_active_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
     setEditForm(prev => ({ ...prev, password: '' }));
     showToast('Profile updated successfully!');

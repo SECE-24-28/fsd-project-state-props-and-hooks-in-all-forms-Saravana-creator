@@ -1,5 +1,6 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { showToast } from '../Components/Toast';
 import Home from '../Pages/Home';
 import Products from '../Pages/Products';
 import Login from '../Pages/Login';
@@ -21,11 +22,32 @@ import Footer from '../Components/Footer';
 // Layout wrapper to conditionally render Navbar and Footer (hiding on Admin pages)
 const AppLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = location.pathname.toLowerCase() === '/admin';
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const activeUserJSON = localStorage.getItem('eazeit_active_user');
+    if (activeUserJSON) {
+      setUser(JSON.parse(activeUserJSON));
+    } else {
+      setUser(null);
+    }
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('eazeit_active_user');
+    setUser(null);
+    showToast('Logged out successfully. See you soon!');
+    setTimeout(() => {
+      navigate('/');
+    }, 1200);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-white font-sans antialiased">
-      {!isAdmin && <Navbar />}
+      {!isAdmin && <Navbar user={user} handleLogout={handleLogout} />}
       <main className="flex-grow">
         {children}
       </main>

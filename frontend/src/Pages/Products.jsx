@@ -44,7 +44,7 @@ const Products = () => {
   const [adminProducts, setAdminProducts] = useState([]);
 
   useEffect(() => {
-    const userJSON = sessionStorage.getItem('eazeit_active_user');
+    const userJSON = localStorage.getItem('eazeit_active_user');
     if (userJSON) setUser(JSON.parse(userJSON));
     const stored = JSON.parse(localStorage.getItem('eazeit_admin_products')) || [];
     setAdminProducts(stored);
