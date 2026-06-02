@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getOrdersForUser, formatOrderDate } from '../utils/orders';
-import { getAddressesForUser, deleteAddress } from '../utils/addresses';
-
-/*
+/**
  * Profile Page Component
  * ----------------------
  * Displays user profile info, order history, and saved addresses.
  * Uses hooks:
- *   - useState: to manage local state (user, activeTab, form data, errors)
- *   - useEffect: to fetch user from sessionStorage & load orders/addresses
- *   - useNavigate: to redirect user to login if not authenticated
+ *   - useAuth: central auth context (user, login/logout functions)
+ *   - useState: to manage activeTab, form data, errors
+ *   - useEffect: to load orders/addresses when user loads
  */
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { getOrdersForUser, formatOrderDate } from '../utils/orders';
+import { getAddressesForUser, deleteAddress } from '../utils/addresses';
+import { useAuth } from '../hooks';
+import { showToast } from '../components/Toast';
+
 const Profile = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // ── State for user info ──────────────────────────────────────────────────
-  const [user, setUser] = useState(null);
+  // ── Custom Hooks ─────────────────────────────────────────────────────────
+  const { user, login, logout } = useAuth();
 
   // ── State for active tab (profile, orders, addresses) ────────────────────
   const [activeTab, setActiveTab] = useState('profile-tab');
@@ -27,39 +29,33 @@ const Profile = () => {
   const [editErrors, setEditErrors] = useState({ firstname: '', lastname: '', mobile: '', password: '' });
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // ── State for orders & addresses loaded from localStorage ────────────────
+  // ── State for orders & addresses ─────────────────────────────────────────
   const [orders, setOrders] = useState([]);
   const [addresses, setAddresses] = useState([]);
 
-  // ── Auth Guard: redirect to login if no user in sessionStorage ──────────
+  // ── Auth Guard & Data Loading ────────────────────────────────────────────
   useEffect(() => {
-    const userJSON = sessionStorage.getItem('eazeit_active_user');
-    if (!userJSON) {
+    if (!user) {
       navigate('/login');
       return;
     }
-    const parsedUser = JSON.parse(userJSON);
-    setUser(parsedUser);
 
     // Populate edit form with current user data
     setEditForm({
-      firstname: parsedUser.firstName || '',
-      lastname: parsedUser.lastName || '',
-      mobile: parsedUser.mobile || '',
+      firstname: user.firstName || '',
+      lastname: user.lastName || '',
+      mobile: user.mobile || '',
       password: ''
     });
 
-    // Load orders and addresses from localStorage
-    if (parsedUser.email) {
-      const userOrders = getOrdersForUser(parsedUser.email);
-      setOrders(userOrders);
-
-      const userAddresses = getAddressesForUser(parsedUser.email);
-      setAddresses(userAddresses);
+    // Load orders and addresses
+    if (user.email) {
+      setOrders(getOrdersForUser(user.email));
+      setAddresses(getAddressesForUser(user.email));
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
-  // ── Sync activeTab from URL query param (if provided) ────────────────────
+  // ── Sync activeTab from URL query param ──────────────────────────────────
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && ['profile-tab', 'orders-tab', 'addresses-tab'].includes(tabFromUrl)) {
@@ -67,35 +63,19 @@ const Profile = () => {
     }
   }, [searchParams]);
 
-  // ── Toast helper ─────────────────────────────────────────────────────────
-  const triggerToast = (message, isError = false) => {
-    const toast = document.createElement('div');
-    const bgClass = isError ? 'bg-rose-500 text-white' : 'bg-teal-400 text-slate-900';
-    toast.className = `fixed bottom-5 right-5 ${bgClass} font-bold px-6 py-4 rounded-lg shadow-2xl z-[9999] transition-all duration-300 transform translate-y-0 opacity-100 flex items-center gap-2`;
-    toast.innerHTML = `<span>${message}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  };
-
-  // ── Logout handler ───────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleLogout = () => {
-    sessionStorage.removeItem('eazeit_active_user');
-    triggerToast('Logged out successfully. See you soon!', false);
+    logout();
+    showToast('Logged out successfully. See you soon!');
     setTimeout(() => navigate('/'), 1200);
   };
 
-  // ── Edit form change handler ─────────────────────────────────────────────
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm(prev => ({ ...prev, [name]: value }));
     setEditErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  // ── Profile edit submit handler ──────────────────────────────────────────
   const handleProfileSubmit = (e) => {
     e.preventDefault();
     if (!user) return;
@@ -147,24 +127,23 @@ const Profile = () => {
     }
 
     const updatedUser = { ...user, firstName: editForm.firstname.trim(), lastName: editForm.lastname.trim(), mobile: editForm.mobile.trim() };
-    sessionStorage.setItem('eazeit_active_user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    
+    // Using useAuth login to update session state
+    login(updatedUser);
+    
     setEditForm(prev => ({ ...prev, password: '' }));
-    triggerToast('Profile updated successfully!', false);
+    showToast('Profile updated successfully!');
   };
 
-  // ── Address delete handler ───────────────────────────────────────────────
   const handleDeleteAddress = (addressId) => {
     if (!window.confirm('Are you sure you want to delete this address?')) return;
     if (!user) return;
     
     deleteAddress(user.email, addressId);
-    const updatedAddresses = getAddressesForUser(user.email);
-    setAddresses(updatedAddresses);
-    triggerToast('Address deleted successfully.', false);
+    setAddresses(getAddressesForUser(user.email));
+    showToast('Address deleted successfully.');
   };
 
-  // ── Get user initials for avatar ─────────────────────────────────────────
   const getInitials = () => {
     if (!user) return 'U';
     return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || 'U';
@@ -173,16 +152,14 @@ const Profile = () => {
   // If no user, don't render anything (useEffect will redirect)
   if (!user) return null;
 
-  // ── Tab button class helper ──────────────────────────────────────────────
   const tabBtnClass = (tab) =>
     `w-full text-left px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center gap-3 ${activeTab === tab ? 'bg-teal-400 text-slate-950' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`;
 
   return (
     <>
-      {/*  ===== MAIN DASHBOARD LAYOUT =====  */}
       <main className="flex-1 max-w-7xl w-full mx-auto py-10 px-4 md:px-6">
         
-        {/*  Welcome Header Banner  */}
+        {/* Header Banner */}
         <div className="bg-gradient-to-r from-slate-800 via-slate-800/90 to-slate-900 border border-slate-700/80 rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
             <div className="w-16 h-16 rounded-2xl bg-teal-400/10 border border-teal-400/30 flex items-center justify-center text-xs font-extrabold text-teal-400 shadow-inner shadow-teal-400/10 uppercase tracking-widest">
@@ -195,19 +172,15 @@ const Profile = () => {
               <p className="text-slate-400 text-xs md:text-sm">Manage your account profile, track orders, and edit shipping credentials.</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-rose-500/15"
-          >
+          <button onClick={handleLogout} className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-rose-500/15">
             Logout Session
           </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/*  SIDEBAR  */}
+          {/* SIDEBAR */}
           <div className="lg:col-span-4 flex flex-col gap-6">
-            {/*  Profile Summary Card  */}
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg shadow-slate-950/20">
               <div className="flex flex-col items-center text-center pb-6 border-b border-slate-700/60">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-teal-400 to-teal-500 flex items-center justify-center text-slate-950 text-3xl font-extrabold shadow-lg shadow-teal-400/10 mb-3">
@@ -235,15 +208,14 @@ const Profile = () => {
               </div>
             </div>
 
-            {/*  Dashboard Menu Toggles  */}
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg shadow-slate-950/20 flex flex-col gap-2">
-              <button onClick={() => setActiveTab('profile-tab')} id="btn-profile-tab" className={tabBtnClass('profile-tab')}>
+              <button onClick={() => setActiveTab('profile-tab')} className={tabBtnClass('profile-tab')}>
                 ✏️ Edit Account Credentials
               </button>
-              <button onClick={() => setActiveTab('orders-tab')} id="btn-orders-tab" className={tabBtnClass('orders-tab')}>
+              <button onClick={() => setActiveTab('orders-tab')} className={tabBtnClass('orders-tab')}>
                 🚚 Order History
               </button>
-              <button onClick={() => setActiveTab('addresses-tab')} id="btn-addresses-tab" className={tabBtnClass('addresses-tab')}>
+              <button onClick={() => setActiveTab('addresses-tab')} className={tabBtnClass('addresses-tab')}>
                 📍 Saved Addresses
               </button>
               {user.role === 'admin' && (
@@ -254,17 +226,16 @@ const Profile = () => {
             </div>
           </div>
 
-          {/*  MAIN PANEL  */}
+          {/* MAIN PANEL */}
           <div className="lg:col-span-8">
 
-            {/*  TAB 1: Edit Profile  */}
+            {/* TAB 1: Edit Profile */}
             {activeTab === 'profile-tab' && (
-              <div id="profile-tab" className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
+              <div className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
                 <h3 className="font-serif font-bold text-xl text-white mb-2">Edit Account Profile</h3>
                 <p className="text-slate-400 text-xs md:text-sm mb-6">Modify your first/last name or mobile number. Password confirmation is required.</p>
 
-                <form id="edit-profile-form" onSubmit={handleProfileSubmit} className="flex flex-col gap-5">
-                  
+                <form onSubmit={handleProfileSubmit} className="flex flex-col gap-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="edit-firstname" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">First Name</label>
@@ -303,17 +274,9 @@ const Profile = () => {
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="edit-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Account Password (Required to save)</label>
                       <div className="relative">
-                        <input
-                          type={showEditPassword ? 'text' : 'password'}
-                          id="edit-password"
-                          name="password"
-                          placeholder="Confirm your password to apply changes"
-                          required
-                          value={editForm.password}
-                          onChange={handleEditChange}
-                          className={`w-full px-4 py-3 pr-10 bg-slate-900 border ${editErrors.password ? 'border-rose-500' : 'border-slate-700'} rounded-lg text-white text-sm focus:outline-none focus:border-teal-400 transition-colors`}
-                        />
-                        <button type="button" id="toggle-edit-password" onClick={() => setShowEditPassword(!showEditPassword)}
+                        <input type={showEditPassword ? 'text' : 'password'} id="edit-password" name="password" placeholder="Confirm your password to apply changes" required value={editForm.password} onChange={handleEditChange}
+                          className={`w-full px-4 py-3 pr-10 bg-slate-900 border ${editErrors.password ? 'border-rose-500' : 'border-slate-700'} rounded-lg text-white text-sm focus:outline-none focus:border-teal-400 transition-colors`} />
+                        <button type="button" onClick={() => setShowEditPassword(!showEditPassword)}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-teal-400 transition-colors">
                           {showEditPassword ? (
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
@@ -333,9 +296,9 @@ const Profile = () => {
               </div>
             )}
 
-            {/*  TAB 2: Order History  */}
+            {/* TAB 2: Order History */}
             {activeTab === 'orders-tab' && (
-              <div id="orders-tab" className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
+              <div className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
                 <h3 className="font-serif font-bold text-xl text-white mb-2">Order History</h3>
                 <p className="text-slate-400 text-xs md:text-sm mb-6">Review your past grocery and daily essentials orders purchased from EAZEIT.</p>
 
@@ -370,9 +333,9 @@ const Profile = () => {
               </div>
             )}
 
-            {/*  TAB 3: Saved Addresses  */}
+            {/* TAB 3: Saved Addresses */}
             {activeTab === 'addresses-tab' && (
-              <div id="addresses-tab" className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
+              <div className="tab-content bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-lg shadow-slate-950/20">
                 <h3 className="font-serif font-bold text-xl text-white mb-2">Saved Delivery Addresses</h3>
                 <p className="text-slate-400 text-xs md:text-sm mb-6">Manage your saved home, office, and other shipping destinations.</p>
 

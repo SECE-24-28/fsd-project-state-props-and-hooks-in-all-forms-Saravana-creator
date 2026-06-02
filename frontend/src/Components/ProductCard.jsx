@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../hooks';
 import { showToast } from './Toast';
 
 const CAT_EMOJI = {
@@ -25,20 +26,11 @@ const ProductCard = ({ product, compact = false }) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
-  // Get the currently logged-in user from sessionStorage
-  const getUser = () => {
-    try {
-      const raw = sessionStorage.getItem('eazeit_active_user');
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
+  const { user } = useAuth();
 
   const handleBuyNow = () => {
     addToCart(product, 1);
     showToast('Item added to cart!');
-    const user = getUser();
     if (!user) {
       navigate('/login?redirect=/cart');
     } else {

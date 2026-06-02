@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getOrderById, formatOrderDate } from '../utils/orders';
+import { useAuth } from '../hooks';
 
 /*
  * OrderSuccess Page Component
@@ -12,28 +13,23 @@ import { getOrderById, formatOrderDate } from '../utils/orders';
  * 
  * Hooks used:
  *   - useParams: to read the orderId from the URL
- *   - useState: to store the user and order data
- *   - useEffect: to fetch user from sessionStorage and load the order
+ *   - useAuth: to get the active user session
+ *   - useEffect: to load the order when user is available
  */
 const OrderSuccess = () => {
   // Extract orderId from URL route param
   const { orderId } = useParams();
 
+  const { user } = useAuth();
   const [order, setOrder] = useState(null);
 
-  // Fetch user and order on component mount
+  // Fetch order on component mount
   useEffect(() => {
-    // Read active user from sessionStorage
-    const userJSON = sessionStorage.getItem('eazeit_active_user');
-    if (userJSON) {
-      const parsedUser = JSON.parse(userJSON);
-      // Fetch the order from localStorage using orderId and user email
-      if (parsedUser.email && orderId) {
-        const foundOrder = getOrderById(parsedUser.email, orderId);
-        setOrder(foundOrder);
-      }
+    if (user?.email && orderId) {
+      const foundOrder = getOrderById(user.email, orderId);
+      setOrder(foundOrder);
     }
-  }, [orderId]);
+  }, [user, orderId]);
 
   return (
     <section className="py-16 px-4 md:px-6 bg-slate-900 min-h-[70vh]">

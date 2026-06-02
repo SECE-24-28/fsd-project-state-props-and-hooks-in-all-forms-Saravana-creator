@@ -1,30 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../hooks';
 import { showToast } from './Toast';
 
 const Navbar = () => {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // ── Cart hook – provides real-time cart count ──────────────────────────────
   const { cartCount } = useCart();
 
-  // ── Sync user from sessionStorage on every route change ───────────────────
-  useEffect(() => {
-    try {
-      const activeUserJSON = sessionStorage.getItem('eazeit_active_user');
-      setUser(activeUserJSON ? JSON.parse(activeUserJSON) : null);
-    } catch {
-      setUser(null);
-    }
-  }, [location.pathname]);
-
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleLogout = () => {
-    sessionStorage.removeItem('eazeit_active_user');
-    setUser(null);
+    logout();
     showToast('Logged out successfully. See you soon!');
     setTimeout(() => navigate('/'), 1200);
   };

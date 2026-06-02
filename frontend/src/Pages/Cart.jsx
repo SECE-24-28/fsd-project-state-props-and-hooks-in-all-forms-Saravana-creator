@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { getActiveUser } from '../utils/storage';
+import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
 
 const Cart = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     cartItems,
     cartSubtotal,
@@ -16,7 +17,6 @@ const Cart = () => {
   } = useCart();
 
   const proceedToCheckout = () => {
-    const user = getActiveUser();
     if (!user) {
       showToast('Please login to continue checkout.', true);
       navigate('/login?redirect=/checkout');

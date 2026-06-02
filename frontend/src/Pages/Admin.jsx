@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
+import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
 
 const CAT_EMOJI = {
@@ -17,6 +18,7 @@ const Admin = () => {
 
   // ── Context hooks ─────────────────────────────────────────────────────────
   const { products, addProduct, updateProduct, deleteProduct, resetToSeed } = useProducts();
+  const { user, isAdmin, logout } = useAuth();
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -32,16 +34,12 @@ const Admin = () => {
 
   // ── Auth Guard ────────────────────────────────────────────────────────────
   useEffect(() => {
-    const userJSON = sessionStorage.getItem('eazeit_active_user');
-    if (!userJSON) {
+    if (!user) {
       navigate('/login');
-      return;
-    }
-    const user = JSON.parse(userJSON);
-    if (user.role !== 'admin') {
+    } else if (!isAdmin) {
       navigate('/');
     }
-  }, [navigate]);
+  }, [user, isAdmin, navigate]);
 
   // ── Load user count ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -51,7 +49,7 @@ const Admin = () => {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleLogout = () => {
-    sessionStorage.removeItem('eazeit_active_user');
+    logout();
     navigate('/login');
   };
 

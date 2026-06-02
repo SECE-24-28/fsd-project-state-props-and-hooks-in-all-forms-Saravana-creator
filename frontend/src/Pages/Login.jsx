@@ -1,147 +1,146 @@
+/**
+ * Login Page
+ * ----------
+ * Hooks used:
+ *   useState       — controlled form inputs (email, password, showPassword)
+ *   useNavigate    — redirect after login
+ *   useAuth        — custom hook: login() persists session, user to check existing session
+ *
+ * Props: None (page-level component)
+ */
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks';
+import { showToast } from '../components/Toast';
+
+/* ── Eye SVG sub-components (pure UI, no state) ─────────────────────────── */
+const EyeOpen = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+const EyeOff = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+  </svg>
+);
+
+const ADMIN_EMAIL    = 'admin@eazeit.in';
+const ADMIN_PASSWORD = 'Admin@123';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // ── Controlled input state ────────────────────────────────────────────────
+  const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
 
-  // Toast notifier
-  const triggerToast = (message, isError = false) => {
-    const toast = document.createElement('div');
-    const bgClass = isError ? 'bg-rose-500 text-white' : 'bg-teal-400 text-slate-900';
-    toast.className = `fixed bottom-5 right-5 ${bgClass} font-bold px-6 py-4 rounded-lg shadow-2xl z-[9999] transition-all duration-300 transform translate-y-0 opacity-100 flex items-center gap-2`;
-    toast.innerHTML = `<span>${message}</span>`;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      setTimeout(() => {
-        toast.remove();
-      }, 300);
-    }, 3000);
-  };
+  // ── Hooks ─────────────────────────────────────────────────────────────────
+  const navigate    = useNavigate();
+  const { login }   = useAuth();  // custom hook — handles sessionStorage write
 
+  // ── Submit handler ────────────────────────────────────────────────────────
   const handleLoginSubmit = (e) => {
     e.preventDefault();
+    const trimmedEmail = email.trim().toLowerCase();
 
-    const trimmedEmail = email.trim();
-    const ADMIN_EMAIL = 'admin@eazeit.in';
-    const ADMIN_PASSWORD = 'Admin@123';
-
-    // 1. Admin Verification
-    if (trimmedEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    // 1. Admin verification
+    if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
       if (password === ADMIN_PASSWORD) {
-        const adminUser = {
-          firstName: 'Admin',
-          lastName: 'EAZEIT',
-          email: ADMIN_EMAIL,
-          role: 'admin'
-        };
-        sessionStorage.setItem('eazeit_active_user', JSON.stringify(adminUser));
-        triggerToast('Admin login successful! Redirecting to Admin Panel...', false);
-        setTimeout(() => {
-          navigate('/admin');
-        }, 1200);
+        const adminUser = { firstName: 'Admin', lastName: 'EAZEIT', email: ADMIN_EMAIL, role: 'admin' };
+        login(adminUser); // ← useAuth hook
+        showToast('Admin login successful! Redirecting…');
+        setTimeout(() => navigate('/admin'), 1200);
       } else {
-        triggerToast('Incorrect admin password. Please try again.', true);
+        showToast('Incorrect admin password.', true);
         setPassword('');
       }
       return;
     }
 
-    // 2. Regular User Verification
+    // 2. Regular user verification
     const usersDatabase = JSON.parse(localStorage.getItem('eazeit_users')) || [];
-    const matchedUser = usersDatabase.find(
-      (user) => user.email.toLowerCase() === trimmedEmail.toLowerCase()
-    );
+    const matched = usersDatabase.find((u) => u.email.toLowerCase() === trimmedEmail);
 
-    if (matchedUser && matchedUser.password === password) {
-      sessionStorage.setItem('eazeit_active_user', JSON.stringify(matchedUser));
-      triggerToast(`Login successful! Welcome back, ${matchedUser.firstName}.`, false);
-      setTimeout(() => {
-        navigate('/');
-      }, 1200);
+    if (matched && matched.password === password) {
+      login(matched); // ← useAuth hook
+      showToast(`Welcome back, ${matched.firstName}! 🎉`);
+      setTimeout(() => navigate('/'), 1200);
     } else {
-      triggerToast('Invalid Email Address or Password. Please try again.', true);
+      showToast('Invalid email or password. Please try again.', true);
       setPassword('');
     }
   };
 
   return (
     <>
-      {/*  ===== LOGIN FORM =====  */}
       <main className="flex-1 flex items-center justify-center py-12 px-4 bg-slate-900 min-h-[calc(100vh-200px)]">
-        <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl p-8 md:p-10 shadow-lg shadow-slate-900/50">
-            
-            <div className="flex flex-col items-center mb-8">
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-500 rounded-xl flex items-center justify-center font-serif font-extrabold text-2xl text-slate-900 shadow-md shadow-teal-400/20 mb-4">E</div>
-                <h1 className="font-serif font-bold text-2xl text-white mb-1">Welcome Back</h1>
-                <p className="text-slate-400 text-sm">Login to your EAZEIT account</p>
+        <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-8 md:p-10 shadow-xl shadow-slate-950/50">
+
+          {/* Header */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-500 rounded-2xl flex items-center justify-center font-serif font-extrabold text-2xl text-slate-900 shadow-lg shadow-teal-400/20 mb-5">E</div>
+            <h1 className="font-serif font-bold text-2xl text-white mb-1">Welcome Back</h1>
+            <p className="text-slate-400 text-sm">Login to your EAZEIT account</p>
+          </div>
+
+          {/* Form — controlled inputs using useState */}
+          <form id="login-form" onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
+
+            {/* Email — controlled via useState(email) */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="login-email" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Email Address</label>
+              <input
+                type="email" id="login-email" name="email"
+                placeholder="Enter your email address"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors"
+              />
             </div>
 
-            <form id="login-form" onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
-                
-                <div className="flex flex-col gap-1.5">
-                    <label htmlFor="login-email" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Email Address</label>
-                    <input 
-                      type="email" 
-                      id="login-email" 
-                      name="email" 
-                      placeholder="Enter your email address" 
-                      required 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
-                    />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                    <label htmlFor="login-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Password</label>
-                    <div className="relative">
-                        <input 
-                          type={showPassword ? "text" : "password"} 
-                          id="login-password" 
-                          name="password" 
-                          placeholder="Enter your password" 
-                          required 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full px-4 py-3 pr-10 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors" 
-                        />
-                        <button 
-                          type="button" 
-                          id="toggle-login-password" 
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-teal-400 transition-colors"
-                        >
-                          {showPassword ? (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                            </svg>
-                          ) : (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="text-right">
-                    <Link to="/forgot-password" className="text-xs font-medium text-teal-400 hover:underline">Forgot your password?</Link>
-                </div>
-
-                <button type="submit" className="w-full mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3.5 rounded-lg transition-all duration-200 active:scale-95 shadow-lg shadow-teal-400/20">Login to Account</button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t border-slate-700/60 flex flex-col items-center gap-3 text-sm text-slate-400">
-                <span>Do not have an account? <Link to="/signup" className="text-teal-400 hover:underline font-semibold">Create one here</Link></span>
-                <Link to="/" className="text-slate-300 hover:text-white transition-colors">Back to Home</Link>
+            {/* Password — controlled via useState(password) + showPassword toggle */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="login-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="login-password" name="password"
+                  placeholder="Enter your password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-11 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors"
+                />
+                {/* Toggle visibility — updates showPassword state via useState */}
+                <button
+                  type="button" id="toggle-login-password"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-teal-400 transition-colors"
+                >
+                  {showPassword ? <EyeOff /> : <EyeOpen />}
+                </button>
+              </div>
             </div>
+
+            <div className="text-right -mt-2">
+              <Link to="/forgot-password" className="text-xs font-medium text-teal-400 hover:underline">Forgot your password?</Link>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full mt-1 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3.5 rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-teal-400/20"
+            >
+              Login to Account
+            </button>
+          </form>
+
+          {/* Footer links */}
+          <div className="mt-8 pt-6 border-t border-slate-700/60 flex flex-col items-center gap-3 text-sm text-slate-400">
+            <span>Don't have an account? <Link to="/signup" className="text-teal-400 hover:underline font-semibold">Create one here</Link></span>
+            <Link to="/" className="text-slate-300 hover:text-white transition-colors text-xs">← Back to Home</Link>
+          </div>
 
         </div>
       </main>

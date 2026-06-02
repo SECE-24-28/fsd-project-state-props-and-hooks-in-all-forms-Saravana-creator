@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { getActiveUser } from '../utils/storage';
+import { useAuth } from '../hooks';
 import {
   getAddressesForUser,
   addAddress,
@@ -25,7 +25,7 @@ const initialAddress = {
 const Checkout = () => {
   const navigate = useNavigate();
   const { cartItems, cartSubtotal, deliveryFee, cartTotal, clearCart } = useCart();
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -35,22 +35,20 @@ const Checkout = () => {
   const [card, setCard] = useState({ name: '', number: '', expiry: '', cvv: '' });
 
   useEffect(() => {
-    const activeUser = getActiveUser();
-    if (!activeUser) {
+    if (!user) {
       navigate('/login?redirect=/checkout');
       return;
     }
-    if (activeUser.role === 'admin') {
+    if (user.role === 'admin') {
       navigate('/admin');
       return;
     }
-    setUser(activeUser);
-    seedDefaultAddresses(activeUser.email);
-    const list = getAddressesForUser(activeUser.email);
+    seedDefaultAddresses(user.email);
+    const list = getAddressesForUser(user.email);
     setAddresses(list);
-    const defaultAddr = getDefaultAddress(activeUser.email);
+    const defaultAddr = getDefaultAddress(user.email);
     if (defaultAddr) setSelectedAddressId(defaultAddr.id);
-  }, [navigate]);
+  }, [user, navigate]);
 
   useEffect(() => {
     if (cartItems.length === 0) navigate('/cart');
