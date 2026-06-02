@@ -16,7 +16,7 @@ const Admin = () => {
   const navigate = useNavigate();
 
   // ── Context hooks ─────────────────────────────────────────────────────────
-  const { products, adminProducts, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, resetToSeed } = useProducts();
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -88,7 +88,7 @@ const Admin = () => {
     setEditingId(product.id);
   };
 
-  const recentProducts = [...adminProducts].reverse().slice(0, 5);
+  const recentProducts = [...products].reverse().slice(0, 5);
 
   const titles = {
     'dashboard': 'Dashboard Overview',
@@ -177,21 +177,13 @@ const Admin = () => {
             {activeSection === 'dashboard' && (
               <div className="flex flex-col gap-8">
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
                     <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Total Products</div>
                     <div className="flex items-end justify-between">
-                      {/* Uses products from ProductContext (static + admin-added) */}
+                      {/* Uses products from ProductContext (all admin-managed) */}
                       <div className="text-3xl font-serif font-extrabold text-white">{products.length}</div>
                       <div className="text-teal-400 text-xs font-bold">Live</div>
-                    </div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-                    <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Admin-Added</div>
-                    <div className="flex items-end justify-between">
-                      {/* Uses adminProducts from ProductContext */}
-                      <div className="text-3xl font-serif font-extrabold text-white">{adminProducts.length}</div>
-                      <div className="text-teal-400 text-xs font-bold">New</div>
                     </div>
                   </div>
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
@@ -334,21 +326,28 @@ const Admin = () => {
                   <div className="p-5 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h2 className="font-bold text-base text-white">Manage Products</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">All products added by you are listed here. Delete to remove them from the store.</p>
+                      <p className="text-xs text-slate-400 mt-0.5">All products listed here are admin-managed. Delete to remove from the store.</p>
                     </div>
-                    <button onClick={() => setActiveSection('add-product')} className="shrink-0 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-xs px-4 py-2 rounded-lg transition-all duration-200 active:scale-95">
-                      + Add New
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { if (window.confirm('Reset all products to the 5 original seed products?')) resetToSeed(); }}
+                        className="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs px-3 py-2 rounded-lg transition-all duration-200 active:scale-95"
+                      >
+                        ↺ Reset Defaults
+                      </button>
+                      <button onClick={() => setActiveSection('add-product')} className="shrink-0 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-xs px-4 py-2 rounded-lg transition-all duration-200 active:scale-95">
+                        + Add New
+                      </button>
+                    </div>
                   </div>
 
-                  {adminProducts.length === 0 ? (
+                  {products.length === 0 ? (
                     <div className="p-10 text-center text-slate-400 text-sm">
                       No products added yet. <button onClick={() => setActiveSection('add-product')} className="text-teal-400 underline">Add your first product</button>
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-700/60">
-                      {/* Uses adminProducts from ProductContext – no direct localStorage reads */}
-                      {adminProducts.slice().reverse().map((p) => (
+                    {products.slice().reverse().map((p) => (
                         <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 hover:bg-slate-700/20 transition-colors">
                           <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0 text-2xl">
                             {p.image ? (
