@@ -13,6 +13,7 @@ import { getOrdersForUser, formatOrderDate } from '../utils/orders';
 import { getAddressesForUser, deleteAddress } from '../utils/addresses';
 import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
+import { apiUpdateProfile, apiGetUserOrders } from '../utils/api';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -50,8 +51,18 @@ const Profile = () => {
 
     // Load orders and addresses
     if (user.email) {
-      setOrders(getOrdersForUser(user.email));
       setAddresses(getAddressesForUser(user.email));
+
+      const loadOrders = async () => {
+        try {
+          const list = await apiGetUserOrders(user.email);
+          setOrders(list);
+        } catch (error) {
+          console.warn('Backend server offline. Loading local orders.');
+          setOrders(getOrdersForUser(user.email));
+        }
+      };
+      loadOrders();
     }
   }, [user, navigate]);
 
@@ -76,7 +87,7 @@ const Profile = () => {
     setEditErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
 
@@ -99,24 +110,41 @@ const Profile = () => {
       hasErrors = true;
     }
 
-    // Verify password (admin doesn't need password check against DB)
-    if (user.role !== 'admin') {
-      const usersDatabase = JSON.parse(localStorage.getItem('eazeit_users')) || [];
-      const dbUser = usersDatabase.find(u => u.email.toLowerCase() === user.email.toLowerCase());
-      if (!dbUser || dbUser.password !== editForm.password) {
-        newErrors.password = 'Password incorrect! Cannot update.';
-        hasErrors = true;
-      }
-    }
-
     if (hasErrors) {
       setEditErrors(newErrors);
       return;
     }
 
-    // Apply updates
+    // Try updating profile on the backend first
+    try {
+      const updatedUser = await apiUpdateProfile(user.email, {
+        firstName: editForm.firstname.trim(),
+        lastName: editForm.lastname.trim(),
+        mobile: editForm.mobile.trim(),
+      });
+      login(updatedUser);
+      setEditForm(prev => ({ ...prev, password: '' }));
+      showToast('Profile updated successfully!');
+      return;
+    } catch (error) {
+      const isNetworkError = error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch');
+      if (!isNetworkError) {
+        showToast(error.message, true);
+        return;
+      }
+      console.warn('Backend server offline. Falling back to local offline mode.');
+    }
+
+    // Fallback: Verify password and update locally
     if (user.role !== 'admin') {
       const usersDatabase = JSON.parse(localStorage.getItem('eazeit_users')) || [];
+      const dbUser = usersDatabase.find(u => u.email.toLowerCase() === user.email.toLowerCase());
+      if (!dbUser || dbUser.password !== editForm.password) {
+        setEditErrors(prev => ({ ...prev, password: 'Password incorrect! Cannot update.' }));
+        showToast('Password verification failed.', true);
+        return;
+      }
+
       const updatedDb = usersDatabase.map(u => {
         if (u.email.toLowerCase() === user.email.toLowerCase()) {
           return { ...u, firstName: editForm.firstname.trim(), lastName: editForm.lastname.trim(), mobile: editForm.mobile.trim() };
@@ -127,12 +155,9 @@ const Profile = () => {
     }
 
     const updatedUser = { ...user, firstName: editForm.firstname.trim(), lastName: editForm.lastname.trim(), mobile: editForm.mobile.trim() };
-    
-    // Using useAuth login to update session state
     login(updatedUser);
-    
     setEditForm(prev => ({ ...prev, password: '' }));
-    showToast('Profile updated successfully!');
+    showToast('Profile updated successfully! (Offline)');
   };
 
   const handleDeleteAddress = (addressId) => {

@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
+import { apiLogin } from '../utils/api';
 
 /* ── Eye SVG sub-components (pure UI, no state) ─────────────────────────── */
 const EyeOpen = () => (
@@ -40,16 +41,39 @@ const Login = () => {
   const { login }   = useAuth();  // custom hook — handles sessionStorage write
 
   // ── Submit handler ────────────────────────────────────────────────────────
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const trimmedEmail = email.trim().toLowerCase();
 
-    // 1. Admin verification
+    // 1. Try backend API login
+    try {
+      const user = await apiLogin(trimmedEmail, password);
+      login(user);
+      showToast(`Welcome back, ${user.firstName || 'User'}! 🎉`);
+      if (user.role === 'admin') {
+        setTimeout(() => navigate('/admin'), 1200);
+      } else {
+        setTimeout(() => navigate('/'), 1200);
+      }
+      return;
+    } catch (error) {
+      const isNetworkError = error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch');
+      if (!isNetworkError) {
+        // Actual credential mismatch or request error returned by the server
+        showToast(error.message, true);
+        setPassword('');
+        return;
+      }
+      // Server is offline, so we proceed to fallback
+      console.warn('Backend server offline. Falling back to local offline mode.');
+    }
+
+    // 2. Fallback: Admin verification (offline)
     if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
       if (password === ADMIN_PASSWORD) {
         const adminUser = { firstName: 'Admin', lastName: 'EAZEIT', email: ADMIN_EMAIL, role: 'admin' };
         login(adminUser); // ← useAuth hook
-        showToast('Admin login successful! Redirecting…');
+        showToast('Admin login successful (Offline)! Redirecting…');
         setTimeout(() => navigate('/admin'), 1200);
       } else {
         showToast('Incorrect admin password.', true);
@@ -58,13 +82,13 @@ const Login = () => {
       return;
     }
 
-    // 2. Regular user verification
+    // 3. Fallback: Regular user verification (offline)
     const usersDatabase = JSON.parse(localStorage.getItem('eazeit_users')) || [];
     const matched = usersDatabase.find((u) => u.email.toLowerCase() === trimmedEmail);
 
     if (matched && matched.password === password) {
       login(matched); // ← useAuth hook
-      showToast(`Welcome back, ${matched.firstName}! 🎉`);
+      showToast(`Welcome back, ${matched.firstName}! 🎉 (Offline)`);
       setTimeout(() => navigate('/'), 1200);
     } else {
       showToast('Invalid email or password. Please try again.', true);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from '../components/ProductCard';
@@ -6,12 +6,12 @@ import ProductCard from '../components/ProductCard';
 /**
  * Home Page
  * ---------
- * Props / Hooks used:
- *   - useProducts() — reads the admin-managed product list from ProductContext
- *   - products      — passed as prop to <ProductCard product={p} />
- *   - compact       — boolean prop passed to ProductCard for a smaller card style
- *
- * No hardcoded mock data. All products come from ProductContext (localStorage).
+ * Features:
+ *  - Hero section with animated headline
+ *  - Features bar
+ *  - Category showcase
+ *  - Auto-rotating product carousel (3s interval, arrows + dots)
+ *  - Why Choose Us section
  */
 
 const CATEGORY_SHOWCASES = [
@@ -21,14 +21,130 @@ const CATEGORY_SHOWCASES = [
   { label: 'Personal Care', catKey: 'Personal Care', emoji: '💊' },
 ];
 
+// How many cards visible per slide depending on screen — we chunk products
+const CHUNK_SIZE = 3; // shown on desktop; carousel always chunks by 1 on mobile
+
+/* ─── Auto-rotating Carousel Component ───────────────────────────────────── */
+const ProductCarousel = ({ products }) => {
+  const [current, setCurrent] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const timerRef = useRef(null);
+
+  const total = products.length;
+
+  const goTo = useCallback(
+    (index) => {
+      if (transitioning || total === 0) return;
+      setTransitioning(true);
+      setCurrent((index + total) % total);
+      setTimeout(() => setTransitioning(false), 400);
+    },
+    [transitioning, total]
+  );
+
+  const next = useCallback(() => goTo(current + 1), [current, goTo]);
+  const prev = useCallback(() => goTo(current - 1), [current, goTo]);
+
+  // Auto-advance every 3 seconds unless hovered
+  useEffect(() => {
+    if (isHovered || total <= 1) return;
+    timerRef.current = setInterval(next, 3000);
+    return () => clearInterval(timerRef.current);
+  }, [isHovered, next, total]);
+
+  if (total === 0) return null;
+
+  // Build visible indices: current, current+1, current+2 (wrapping)
+  const visibleIndices = [0, 1, 2].map((offset) => (current + offset) % total);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* ── Card Strip ── */}
+      <div className="row g-4 overflow-hidden">
+        {/* Desktop: show 3 cards */}
+        {visibleIndices.map((idx, pos) => (
+          <div
+            key={`${idx}-${pos}`}
+            className={`col-12 col-sm-6 col-lg-4 transition-all duration-400 ${
+              transitioning ? 'opacity-60 scale-[0.98]' : 'opacity-100 scale-100'
+            }`}
+            style={{ transition: 'opacity 0.4s ease, transform 0.4s ease' }}
+          >
+            <ProductCard product={products[idx]} compact />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Prev / Next Arrows ── */}
+      {total > 3 && (
+        <>
+          <button
+            onClick={prev}
+            aria-label="Previous products"
+            className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-slate-700 hover:bg-teal-400 border border-slate-600 hover:border-teal-400 text-slate-300 hover:text-slate-900 flex items-center justify-center shadow-lg transition-all duration-200 active:scale-90"
+          >
+            ‹
+          </button>
+          <button
+            onClick={next}
+            aria-label="Next products"
+            className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-slate-700 hover:bg-teal-400 border border-slate-600 hover:border-teal-400 text-slate-300 hover:text-slate-900 flex items-center justify-center shadow-lg transition-all duration-200 active:scale-90"
+          >
+            ›
+          </button>
+        </>
+      )}
+
+      {/* ── Dot Indicators ── */}
+      {total > 1 && (
+        <div className="flex justify-center gap-2 mt-8">
+          {products.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => goTo(idx)}
+              aria-label={`Go to product ${idx + 1}`}
+              className={`rounded-full transition-all duration-300 ${
+                idx === current
+                  ? 'w-6 h-2 bg-teal-400'
+                  : 'w-2 h-2 bg-slate-600 hover:bg-slate-400'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Auto-play progress bar ── */}
+      {!isHovered && total > 1 && (
+        <div className="mt-3 h-0.5 bg-slate-700 rounded-full overflow-hidden">
+          <div
+            key={current}
+            className="h-full bg-teal-400 rounded-full"
+            style={{
+              animation: 'carousel-progress 3s linear forwards',
+            }}
+          />
+        </div>
+      )}
+
+      <style>{`
+        @keyframes carousel-progress {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+/* ─── Home Page ────────────────────────────────────────────────────────────── */
 const Home = () => {
-  // ── Hook: reads admin-managed products from context ─────────────────────
   const { products } = useProducts();
 
-  // Show up to 4 products in the featured section
-  const featuredProducts = products.slice(0, 4);
-
-  // Dynamic per-category counts
   const categoryCounts = products.reduce((acc, p) => {
     acc[p.category] = (acc[p.category] || 0) + 1;
     return acc;
@@ -37,14 +153,18 @@ const Home = () => {
   return (
     <>
       {/* ===== HERO SECTION ===== */}
-      <section className="py-16 md:py-24 bg-slate-900">
-        <div className="container-xl px-4 px-md-6">
+      <section className="py-16 md:py-24 bg-slate-900 relative overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-teal-400/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="container-xl px-4 px-md-6 relative">
           <div className="row align-items-center justify-content-between gy-5">
 
-            {/* Left column — headline + CTA */}
+            {/* Left column */}
             <div className="col-lg-6">
               <div className="inline-block bg-teal-400/10 border border-teal-400/20 text-teal-400 font-semibold text-xs px-3 py-1 rounded-full uppercase tracking-widest mb-5">
-                Now Delivering Near You
+                🛒 Now Delivering Near You
               </div>
               <h1 className="font-serif font-extrabold text-4xl md:text-5xl lg:text-6xl text-white leading-tight mb-5">
                 Fresh Groceries,<br />
@@ -54,10 +174,16 @@ const Home = () => {
                 Shop daily essentials, personal care, and household products from the comfort of your home. Quality guaranteed, delivered fast.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
-                <Link to="/products" className="btn border-0 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 shadow-lg shadow-teal-400/20 active:scale-95">
+                <Link
+                  to="/products"
+                  className="btn border-0 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 shadow-lg shadow-teal-400/20 active:scale-95"
+                >
                   Shop Now →
                 </Link>
-                <Link to="/about" className="btn bg-transparent text-teal-400 border-2 border-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 active:scale-95">
+                <Link
+                  to="/about"
+                  className="btn bg-transparent text-teal-400 border-2 border-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 active:scale-95"
+                >
                   Learn More
                 </Link>
               </div>
@@ -86,7 +212,7 @@ const Home = () => {
                       {p.image ? (
                         <img src={p.image} alt={p.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                       ) : (
-                        <span className="text-5xl">{['🦷','🧹','🧼','💊','📦'][i] || '📦'}</span>
+                        <span className="text-5xl">{['🦷', '🧹', '🧼', '💊', '📦'][i] || '📦'}</span>
                       )}
                     </div>
                   </div>
@@ -111,10 +237,10 @@ const Home = () => {
         <div className="container-xl px-4">
           <div className="flex flex-wrap justify-around items-center gap-6">
             {[
-              { icon: '🚚', title: 'Free Delivery', sub: 'On orders above Rs. 299' },
-              { icon: '🔒', title: 'Secure Payments', sub: 'UPI, Cards & COD' },
+              { icon: '🚚', title: 'Free Delivery',    sub: 'On orders above Rs. 299' },
+              { icon: '🔒', title: 'Secure Payments',  sub: 'UPI, Cards & COD' },
               { icon: '✅', title: 'Genuine Products', sub: '100% authentic' },
-              { icon: '🔄', title: 'Easy Returns', sub: '7-day hassle-free' },
+              { icon: '🔄', title: 'Easy Returns',     sub: '7-day hassle-free' },
             ].map(({ icon, title, sub }) => (
               <div key={title} className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-teal-400/10 border border-teal-400/25 rounded-xl flex items-center justify-center text-2xl shrink-0">{icon}</div>
@@ -137,7 +263,6 @@ const Home = () => {
           <p className="text-slate-400 text-sm text-center mb-10">Browse our everyday essentials</p>
           <div className="row g-4">
             {CATEGORY_SHOWCASES.map((cat) => {
-              /* Find first product in this category with an image — use as thumbnail */
               const sample = products.find((p) => p.category === cat.catKey && p.image);
               const count = categoryCounts[cat.catKey] || 0;
               return (
@@ -163,15 +288,16 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ===== FEATURED PRODUCTS ===== */}
+      {/* ===== FEATURED PRODUCTS — AUTO-ROTATING CAROUSEL ===== */}
       <section className="py-16 md:py-20 bg-slate-900">
         <div className="container-xl px-4">
-          <h2 className="font-serif font-extrabold text-3xl md:text-4xl text-white text-center mb-2">
-            Featured <span className="text-teal-400">Products</span>
-          </h2>
-          <p className="text-slate-400 text-sm text-center mb-10">Handpicked essentials for your everyday needs</p>
+          <div className="text-center mb-10">
+            <h2 className="font-serif font-extrabold text-3xl md:text-4xl text-white mb-2">
+              Featured <span className="text-teal-400">Products</span>
+            </h2>
+            <p className="text-slate-400 text-sm">Handpicked essentials — auto-browsing for you</p>
+          </div>
 
-          {/* No products state */}
           {products.length === 0 ? (
             <div className="text-center py-16 flex flex-col items-center gap-4">
               <span className="text-6xl">📦</span>
@@ -183,19 +309,14 @@ const Home = () => {
             </div>
           ) : (
             <>
-              {/* ProductCard receives:
-                    product={p}  — full product data prop
-                    compact      — boolean prop for smaller card layout
-              */}
-              <div className="row g-4">
-                {featuredProducts.map((p) => (
-                  <div key={p.id} className="col-sm-6 col-lg-3">
-                    <ProductCard product={p} compact />
-                  </div>
-                ))}
+              <div className="px-6 relative">
+                <ProductCarousel products={products} />
               </div>
               <div className="text-center mt-10">
-                <Link to="/products" className="btn bg-transparent text-teal-400 border-2 border-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 active:scale-95">
+                <Link
+                  to="/products"
+                  className="btn bg-transparent text-teal-400 border-2 border-teal-400 hover:bg-teal-400 hover:text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 active:scale-95"
+                >
                   View All {products.length} Products →
                 </Link>
               </div>

@@ -39,6 +39,7 @@ export function useAuth() {
   /** Remove user from sessionStorage and clear state */
   const logout = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem('eazeit_auth_token');
     setUser(null);
   }, []);
 

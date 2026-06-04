@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { colgate, godrejSoap } from '../Assets';
 
 const About = () => {
   return (
@@ -31,7 +32,7 @@ const About = () => {
                 </div>
                 <div className="col-lg-6">
                     <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden h-100 min-h-[300px] md:min-h-[400px] d-flex align-items-center justify-content-center p-3 p-md-4">
-                        <img src="images/colgate.jpg" alt="EAZEIT product range" className="w-100 h-100 object-cover rounded-lg shadow-2xl" />
+                        <img src={colgate} alt="EAZEIT product range" className="w-100 h-100 object-cover rounded-lg shadow-2xl" />
                     </div>
                 </div>
             </div>
@@ -39,7 +40,7 @@ const About = () => {
             <div className="row align-items-center gy-5 mt-3">
                 <div className="col-lg-6 order-2 order-lg-1">
                     <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden h-100 min-h-[300px] md:min-h-[400px] d-flex align-items-center justify-content-center p-3 p-md-4">
-                        <img src="images/godrej-soap.jpg" alt="Quality products at EAZEIT" className="w-100 h-100 object-cover rounded-lg shadow-2xl" />
+                        <img src={godrejSoap} alt="Quality products at EAZEIT" className="w-100 h-100 object-cover rounded-lg shadow-2xl" />
                     </div>
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 ps-lg-5">
@@ -93,31 +94,13 @@ const About = () => {
             <h2 className="font-serif font-extrabold fs-2 fs-md-1 text-white text-center mb-2">Meet Our <span className="text-teal-400">Team</span></h2>
             <p className="text-slate-400 fs-6 text-center mb-5">The people behind EAZEIT</p>
 
-            <div className="row g-4">
-                <div className="col-md-4">
-                    <div className="card h-100 bg-slate-800 border border-slate-700 rounded-xl p-4 p-md-5 text-center transition-all duration-300 hover:border-teal-400/30 group">
-                        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-teal-400 to-teal-500 rounded-circle d-flex align-items-center justify-content-center font-serif font-extrabold fs-1 text-slate-900 mb-4 shadow-lg shadow-teal-400/20 group-hover:scale-105 transition-transform">R</div>
-                        <h3 className="fs-5 fw-bold text-white mb-1">Rajan Kumar</h3>
-                        <div className="text-xs text-teal-400 fw-bold text-uppercase tracking-wider mb-3">Founder &amp; CEO</div>
-                        <p className="card-text text-sm text-slate-400 leading-relaxed">With over 10 years in retail and logistics, Rajan founded EAZEIT to bring the ease of modern e-commerce to everyday grocery shopping.</p>
-                    </div>
-                </div>
-                
-                <div className="col-md-4">
-                    <div className="card h-100 bg-slate-800 border border-slate-700 rounded-xl p-4 p-md-5 text-center transition-all duration-300 hover:border-teal-400/30 group">
-                        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-[#4ee8d4] to-[#2dd4bf] rounded-circle d-flex align-items-center justify-content-center font-serif font-extrabold fs-1 text-slate-900 mb-4 shadow-lg shadow-teal-400/20 group-hover:scale-105 transition-transform">P</div>
-                        <h3 className="fs-5 fw-bold text-white mb-1">Priya Nair</h3>
-                        <div className="text-xs text-teal-400 fw-bold text-uppercase tracking-wider mb-3">Head of Operations</div>
-                        <p className="card-text text-sm text-slate-400 leading-relaxed">Priya ensures that every order reaches the right customer at the right time. She manages the delivery and warehouse operations.</p>
-                    </div>
-                </div>
-                
-                <div className="col-md-4">
-                    <div className="card h-100 bg-slate-800 border border-slate-700 rounded-xl p-4 p-md-5 text-center transition-all duration-300 hover:border-teal-400/30 group">
-                        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-[#1aa898] to-[#0d544c] rounded-circle d-flex align-items-center justify-content-center font-serif font-extrabold fs-1 text-white mb-4 shadow-lg shadow-teal-400/20 group-hover:scale-105 transition-transform">A</div>
-                        <h3 className="fs-5 fw-bold text-white mb-1">Arjun Mehta</h3>
-                        <div className="text-xs text-teal-400 fw-bold text-uppercase tracking-wider mb-3">Lead Developer</div>
-                        <p className="card-text text-sm text-slate-400 leading-relaxed">Arjun built the EAZEIT platform from the ground up, focusing on a clean, fast, and user-friendly shopping experience.</p>
+            <div className="row justify-content-center">
+                <div className="col-md-6 col-lg-5">
+                    <div className="card h-100 bg-slate-800 border border-slate-700 rounded-xl p-4 p-md-5 text-center transition-all duration-300 hover:border-teal-400/30 group shadow-lg">
+                        <div className="w-24 h-24 mx-auto bg-gradient-to-br from-teal-400 to-teal-500 rounded-circle d-flex align-items-center justify-content-center font-serif font-extrabold fs-1 text-slate-900 mb-4 shadow-lg shadow-teal-400/20 group-hover:scale-105 transition-transform">S</div>
+                        <h3 className="fs-5 fw-bold text-white mb-1">Saravana Perumal</h3>
+                        <div className="text-xs text-teal-400 fw-bold text-uppercase tracking-wider mb-3">Founder &amp; Creator</div>
+                        <p className="card-text text-sm text-slate-400 leading-relaxed">Saravana built and designed the EAZEIT platform from the ground up, focusing on bringing a modern, fast, and highly reliable e-commerce experience to everyday grocery shopping.</p>
                     </div>
                 </div>
             </div>

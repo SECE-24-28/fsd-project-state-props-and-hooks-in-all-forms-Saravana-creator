@@ -17,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import { usePasswordStrength } from '../hooks';
 import { showToast } from '../components/Toast';
+import { apiSignUp } from '../utils/api';
 
 /* ─── Eye toggle button — receives props: visible, onToggle, id ─────────── */
 const EyeButton = ({ visible, onToggle, id }) => (
@@ -116,7 +117,7 @@ const Signup = () => {
   };
 
   // ── Submit handler ───────────────────────────────────────────────────────
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const ok = [
       validateField('firstname',       formData.firstname),
@@ -132,8 +133,37 @@ const Signup = () => {
     if (!ok || !strength.isValid) { showToast('Please fix all errors.', true); return; }
     if (!formData.terms) { showToast('You must agree to the Terms & Conditions.', true); return; }
 
+    const trimmedEmail = formData.email.trim().toLowerCase();
+
+    // 1. Try backend API signup
+    try {
+      const user = await apiSignUp(
+        formData.firstname.trim(),
+        formData.lastname.trim(),
+        trimmedEmail,
+        formData.mobile.trim(),
+        formData.password
+      );
+      login(user);
+      showToast('Registration successful! Welcome to EAZEIT 🎉');
+      setTimeout(() => navigate('/profile'), 1200);
+      return;
+    } catch (error) {
+      const isNetworkError = error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch');
+      if (!isNetworkError) {
+        // Validation/duplicate error from server
+        showToast(error.message, true);
+        if (error.message.toLowerCase().includes('email')) {
+          setErrors((prev) => ({ ...prev, email: error.message }));
+        }
+        return;
+      }
+      console.warn('Backend server offline. Falling back to local offline mode.');
+    }
+
+    // 2. Fallback: Local database signup (offline)
     const usersDatabase = JSON.parse(localStorage.getItem('eazeit_users')) || [];
-    const alreadyExists = usersDatabase.some((u) => u.email.toLowerCase() === formData.email.trim().toLowerCase());
+    const alreadyExists = usersDatabase.some((u) => u.email.toLowerCase() === trimmedEmail);
     if (alreadyExists) {
       showToast('This email is already registered!', true);
       setErrors((prev) => ({ ...prev, email: 'Email already registered!' }));
@@ -143,7 +173,7 @@ const Signup = () => {
     const newUser = {
       firstName:   formData.firstname.trim(),
       lastName:    formData.lastname.trim(),
-      email:       formData.email.trim(),
+      email:       trimmedEmail,
       countryCode: '+91',
       mobile:      formData.mobile.trim(),
       password:    formData.password,
@@ -152,7 +182,7 @@ const Signup = () => {
     usersDatabase.push(newUser);
     localStorage.setItem('eazeit_users', JSON.stringify(usersDatabase));
     login(newUser); // ← useAuth hook — saves to sessionStorage & updates state
-    showToast('Registration successful! Welcome to EAZEIT 🎉');
+    showToast('Registration successful! Welcome to EAZEIT 🎉 (Offline)');
     setTimeout(() => navigate('/profile'), 1200);
   };
 
