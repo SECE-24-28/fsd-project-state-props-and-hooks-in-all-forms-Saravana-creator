@@ -1,14 +1,20 @@
 {
-  "name": "backend",
+  "name": "annachi-kadai-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "EAZEIT Annachi Kadai - Backend API",
   "main": "Server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node Server.js"
+    "start": "node Server.js",
+    "dev": "nodemon Server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "eazeit",
+    "grocery",
+    "ecommerce",
+    "api"
+  ],
+  "author": "Saravana Perumal",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -17,6 +23,11 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.6.3"
+    "mongoose": "^9.6.3",
+    "razorpay": "^2.9.6"
+  },
+  "devDependencies": {
+    "express-rate-limit": "^8.5.2",
+    "nodemon": "^3.1.14"
   }
 }

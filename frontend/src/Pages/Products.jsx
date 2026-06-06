@@ -3,7 +3,13 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from '../components/ProductCard';
 
-const CATEGORIES = ['All Products', 'Oral Care', 'Household', 'Bath & Body', 'Food & Snacks'];
+const CATEGORIES = ['All Products', 'Oral Care', 'Household', 'Bath & Body', 'Food & Snacks', 'Personal Care', 'Beverages', 'Dairy', 'Others'];
+
+const CAT_EMOJI = {
+  'All Products': '🛍️', 'Oral Care': '🦷', 'Household': '🧹', 'Bath & Body': '🧼',
+  'Food & Snacks': '🍎', 'Personal Care': '💊', 'Beverages': '☕',
+  'Dairy': '🥛', 'Others': '📦',
+};
 
 const Products = () => {
   // ── Context / Router hooks ────────────────────────────────────────────────
@@ -159,7 +165,10 @@ const Products = () => {
                     onClick={() => setSelectedCategory(cat)}
                     className={`flex justify-between items-center text-sm px-3 py-2 rounded-lg transition-colors text-left ${selectedCategory === cat ? 'bg-teal-400/10 text-teal-400' : 'text-slate-300 hover:bg-teal-400/5 hover:text-teal-400'}`}
                   >
-                    <span>{cat}</span>
+                    <span className="flex items-center gap-2">
+                      <span>{CAT_EMOJI[cat] || '📦'}</span>
+                      <span>{cat}</span>
+                    </span>
                     <span className={`text-xs ${selectedCategory === cat ? 'text-teal-400' : 'text-slate-400'}`}>
                       {cat === 'All Products' ? products.length : (categoryCounts[cat] || 0)}
                     </span>

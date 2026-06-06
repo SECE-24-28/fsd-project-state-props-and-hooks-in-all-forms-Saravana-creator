@@ -302,10 +302,7 @@ const Home = () => {
             <div className="text-center py-16 flex flex-col items-center gap-4">
               <span className="text-6xl">📦</span>
               <h3 className="text-white font-bold text-xl">No Products Available</h3>
-              <p className="text-slate-400 text-sm">The Admin has not added any products yet.</p>
-              <Link to="/admin" className="mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200">
-                Go to Admin Panel
-              </Link>
+              <p className="text-slate-400 text-sm">Please check back later — we are restocking our catalog.</p>
             </div>
           ) : (
             <>

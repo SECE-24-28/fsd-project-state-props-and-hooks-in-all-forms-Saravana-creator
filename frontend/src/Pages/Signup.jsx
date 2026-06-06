@@ -12,7 +12,7 @@
  * Props passed down:
  *   - <EyeButton visible={bool} onToggle={fn} />  — receives props visible + onToggle
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import { usePasswordStrength } from '../hooks';
@@ -76,8 +76,14 @@ const Signup = () => {
 
   // ── Custom hooks ─────────────────────────────────────────────────────────
   const navigate            = useNavigate();
-  const { login }           = useAuth();                                // session hook
+  const { login, user }     = useAuth();                                // session hook
   const strength            = usePasswordStrength(formData.password);   // strength hook
+
+  useEffect(() => {
+    if (user) {
+      navigate('/profile');
+    }
+  }, [user, navigate]);
 
   // ── Field validation ─────────────────────────────────────────────────────
   const validateField = (name, value) => {

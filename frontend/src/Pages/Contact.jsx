@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks';
+import { apiSendFeedback } from '../utils/api';
 import { getJSON, setJSON, STORAGE_KEYS } from '../utils/storage';
 import { showToast } from '../components/Toast';
 
@@ -9,12 +11,13 @@ import { showToast } from '../components/Toast';
  * Displays contact information and a form to send messages.
  * 
  * Hooks used:
- *   - useState: to manage form inputs (controlled components pattern)
+ *   - useState: to manage form inputs
+ *   - useEffect: to prefill signed-in user information
  * 
  * Props: None
  */
 const Contact = () => {
-  // State for all form fields (controlled inputs)
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,42 +25,95 @@ const Contact = () => {
     subject: '',
     message: '',
   });
+  const [sending, setSending] = useState(false);
 
-  // Handle input changes for all fields
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        email: user.email || '',
+      }));
+    }
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Build the payload with trimmed values
     const payload = {
       name: formData.name.trim(),
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       subject: formData.subject.trim(),
       message: formData.message.trim(),
-      createdAt: new Date().toISOString(),
     };
 
-    // Save to localStorage
-    const list = getJSON(STORAGE_KEYS.CONTACT_MESSAGES, []) || [];
-    list.unshift(payload);
-    setJSON(STORAGE_KEYS.CONTACT_MESSAGES, list);
+    if (!payload.name || !payload.email || !payload.message) {
+      showToast('Please provide your name, email, and message.', true);
+      return;
+    }
 
-    // Reset form fields
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      subject: '',
-      message: '',
-    });
+    setSending(true);
+    const emailServiceId = process.env.REACT_APP_EMAILJS_SERVICE_ID || 'sara24052007';
+    const emailTemplateId = process.env.REACT_APP_EMAILJS_TEMPLATE_ID || 'template_l8lwjue';
+    const emailUserId = process.env.REACT_APP_EMAILJS_USER_ID || '';
 
-    // Show success toast
+    const emailjsPayload = {
+      service_id: emailServiceId,
+      template_id: emailTemplateId,
+      user_id: emailUserId,
+      template_params: {
+        user_name: payload.name,
+        user_email: payload.email,
+        user_phone: payload.phone,
+        user_subject: payload.subject,
+        user_message: payload.message,
+      },
+    };
+
+    let backendSaved = false;
+    try {
+      await apiSendFeedback(payload);
+      backendSaved = true;
+    } catch (error) {
+      console.warn('Feedback API failed:', error.message);
+      const list = getJSON(STORAGE_KEYS.CONTACT_MESSAGES, []) || [];
+      list.unshift({ ...payload, createdAt: new Date().toISOString() });
+      setJSON(STORAGE_KEYS.CONTACT_MESSAGES, list);
+      showToast('Feedback saved locally because the server is unavailable.', true);
+    }
+
+    try {
+      if (!emailUserId) {
+        throw new Error('EmailJS public key is not configured. Set REACT_APP_EMAILJS_USER_ID in frontend environment.');
+      }
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailjsPayload),
+      });
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`EmailJS error: ${errorBody}`);
+      }
+    } catch (error) {
+      console.warn('EmailJS send failed:', error.message);
+      if (backendSaved) {
+        showToast('Your message is saved and will be emailed once EmailJS is configured.', true);
+      } else {
+        showToast('Unable to send the message right now. Please try again later.', true);
+      }
+      setSending(false);
+      return;
+    }
+
+    setFormData({ name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '', email: user?.email || '', phone: '', subject: '', message: '' });
+    setSending(false);
     showToast('Message sent successfully. We will get back to you soon.');
   };
 
@@ -185,7 +241,9 @@ const Contact = () => {
                             className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-teal-400 transition-colors resize-y"
                           ></textarea>
                       </div>
-                      <button type="submit" className="w-full mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3.5 rounded-lg transition-all duration-200 active:scale-95 shadow-lg shadow-teal-400/20">Send Message</button>
+                      <button type="submit" disabled={sending} className="w-full mt-2 bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold text-sm px-6 py-3.5 rounded-lg transition-all duration-200 active:scale-95 shadow-lg shadow-teal-400/20">
+                        {sending ? 'Sending...' : 'Send Message'}
+                      </button>
                   </form>
               </div>
 

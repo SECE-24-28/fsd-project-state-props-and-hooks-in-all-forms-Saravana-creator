@@ -15,8 +15,9 @@ import harpic     from './harpic.png';
 import godrejSoap from './godrej-soap.png';
 import goodknight from './goodknight.png';
 import closeup    from './closeup.png';
+import muiLogo    from './material-ui-logo.svg';
 
-export { colgate, harpic, godrejSoap, goodknight, closeup };
+export { colgate, harpic, godrejSoap, goodknight, closeup, muiLogo };
 
 /**
  * SEED_PRODUCTS — the 5 initial products populated by the Admin system on first load.
@@ -35,7 +36,7 @@ export const SEED_PRODUCTS = [
     mrp: 50,
     unit: '200g + 160g Pack',
     badge: 'Best Seller',
-    image: 'images/colgate.png',
+    image: colgate,
     addedAt: '2026-01-01T00:00:00.000Z',
   },
   {
@@ -47,7 +48,7 @@ export const SEED_PRODUCTS = [
     mrp: 99,
     unit: '500ml Bottle',
     badge: 'Popular',
-    image: 'images/harpic.png',
+    image: harpic,
     addedAt: '2026-01-01T00:00:01.000Z',
   },
   {
@@ -59,7 +60,7 @@ export const SEED_PRODUCTS = [
     mrp: 175,
     unit: 'Machine + Refill Pack',
     badge: 'New',
-    image: 'images/goodknight.png',
+    image: goodknight,
     addedAt: '2026-01-01T00:00:02.000Z',
   },
   {
@@ -71,7 +72,7 @@ export const SEED_PRODUCTS = [
     mrp: 140,
     unit: 'Pack of 4 x 100g',
     badge: 'Value Pack',
-    image: 'images/godrej-soap.png',
+    image: godrejSoap,
     addedAt: '2026-01-01T00:00:03.000Z',
   },
   {
@@ -83,7 +84,7 @@ export const SEED_PRODUCTS = [
     mrp: 65,
     unit: '80g Tube',
     badge: '',
-    image: 'images/closeup.png',
+    image: closeup,
     addedAt: '2026-01-01T00:00:04.000Z',
   },
 ];

@@ -10,7 +10,20 @@ import {
 } from '../utils/addresses';
 import { generateOrderId, saveOrder } from '../utils/orders';
 import { showToast } from '../components/Toast';
-import { apiPlaceOrder } from '../utils/api';
+import { apiPlaceOrder, createRazorpayOrder, verifyRazorpayPayment } from '../utils/api';
+
+/** Dynamically loads the Razorpay checkout script */
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (document.getElementById('razorpay-script')) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.id  = 'razorpay-script';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload  = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 const initialAddress = {
   label: 'HOME',
@@ -106,79 +119,136 @@ const Checkout = () => {
     return true; // COD
   };
 
+  /* ── Shared: save & navigate after successful payment ── */
+  const finaliseOrder = async (orderData, paymentId = null) => {
+    try {
+      const saved = await apiPlaceOrder({ ...orderData, razorpayPaymentId: paymentId });
+      const localOrder = { ...saved, id: saved.orderId || saved.id };
+      saveOrder(user.email, localOrder);
+      clearCart();
+      navigate(`/order-success/${localOrder.id}`);
+    } catch (err) {
+      const isNet = err.message.includes('fetch') || err.message.includes('NetworkError') || err.message.includes('Failed to fetch');
+      if (!isNet) { showToast(err.message, true); setPlacing(false); return; }
+      // Offline fallback
+      const orderId = generateOrderId();
+      saveOrder(user.email, { id: orderId, items: cartItems, subtotal: cartSubtotal, deliveryFee, total: cartTotal, paymentMethod, address: selectedAddress, status: 'Confirmed', placedAt: new Date().toISOString() });
+      clearCart();
+      navigate(`/order-success/${orderId}`);
+    }
+  };
+
+  /* ── Build shared order payload ── */
+  const buildOrderData = () => ({
+    userEmail: user.email,
+    items: cartItems.map(item => ({
+      productId: item.productId,
+      name: item.name,
+      category: item.category || 'Others',
+      brand: item.brand || 'Others',
+      price: item.price,
+      mrp: item.mrp || 0,
+      image: item.image || '',
+      unit: item.unit || '',
+      qty: item.qty,
+    })),
+    address: {
+      label: selectedAddress.label,
+      name: selectedAddress.name,
+      line1: selectedAddress.line1,
+      line2: selectedAddress.line2 || '',
+      city: selectedAddress.city,
+      pincode: selectedAddress.pincode,
+      phone: selectedAddress.phone,
+    },
+    paymentMethod,
+    subtotal: cartSubtotal,
+    deliveryFee,
+    total: cartTotal,
+  });
+
   /* ── Place order ── */
   const placeOrder = async () => {
     if (!selectedAddress) { showToast('Please select a delivery address.', true); return; }
     if (!validatePayment()) { showToast('Please complete valid payment details.', true); return; }
 
     setPlacing(true);
-    await new Promise((r) => setTimeout(r, 800)); // brief UX delay
 
-    try {
-      const orderData = {
-        userEmail: user.email,
-        items: cartItems.map(item => ({
-          productId: item.productId,
-          name: item.name,
-          category: item.category || 'Others',
-          brand: item.brand || 'Others',
-          price: item.price,
-          mrp: item.mrp || 0,
-          image: item.image || '',
-          unit: item.unit || '',
-          qty: item.qty,
-        })),
-        address: {
-          label: selectedAddress.label,
-          name: selectedAddress.name,
-          line1: selectedAddress.line1,
-          line2: selectedAddress.line2 || '',
-          city: selectedAddress.city,
-          pincode: selectedAddress.pincode,
-          phone: selectedAddress.phone,
-        },
-        paymentMethod,
-        subtotal: cartSubtotal,
-        deliveryFee,
-        total: cartTotal,
-      };
-
-      const savedOrder = await apiPlaceOrder(orderData);
-      
-      const localOrder = {
-        ...savedOrder,
-        id: savedOrder.orderId || savedOrder.id,
-      };
-      saveOrder(user.email, localOrder);
-      clearCart();
-      navigate(`/order-success/${localOrder.id}`);
+    // COD: skip Razorpay, place directly
+    if (paymentMethod === 'COD') {
+      await finaliseOrder(buildOrderData());
       return;
-    } catch (error) {
-      const isNetworkError = error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch');
-      if (!isNetworkError) {
-        showToast(error.message, true);
-        setPlacing(false);
-        return;
-      }
-      console.warn('Backend server offline. Placing order locally.');
     }
 
-    // Fallback: local placement
-    const orderId = generateOrderId();
-    const order = {
-      id: orderId,
-      items: cartItems,
-      subtotal: cartSubtotal,
-      deliveryFee,
-      total: cartTotal,
-      paymentMethod,
-      address: selectedAddress,
-      status: 'Confirmed',
-      placedAt: new Date().toISOString(),
+    // UPI / CARD: open Razorpay popup
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      showToast('Could not load payment gateway. Please try again.', true);
+      setPlacing(false);
+      return;
+    }
+
+    let rzpOrder = null;
+    try {
+      rzpOrder = await createRazorpayOrder(cartTotal);
+    } catch (err) {
+      // If backend is offline, fall back to local placement without Razorpay popup
+      console.warn('Razorpay backend offline, falling back to local order.');
+      await finaliseOrder(buildOrderData());
+      return;
+    }
+
+    const options = {
+      key:         rzpOrder.key,
+      amount:      rzpOrder.amount,
+      currency:    rzpOrder.currency,
+      name:        'EAZEIT',
+      description: 'Annachi Kadai — Quick Grocery',
+      order_id:    rzpOrder.orderId,
+      prefill: {
+        name:    user.firstName + ' ' + (user.lastName || ''),
+        email:   user.email,
+        contact: user.mobile || selectedAddress.phone,
+        method:  paymentMethod === 'UPI' ? 'upi' : 'card',
+        ...(paymentMethod === 'UPI' ? { vpa: upiId } : {}),
+      },
+      theme: { color: '#2dd4bf' },
+      modal: {
+        ondismiss: () => {
+          showToast('Payment cancelled. Your order was not placed.', true);
+          setPlacing(false);
+        },
+      },
+      handler: async (response) => {
+        // Payment successful — verify signature before finalising
+        try {
+          showToast('🔍 Verifying payment...');
+          const verification = await verifyRazorpayPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          if (verification && verification.verified) {
+            showToast('✅ Payment verified! Placing your order…');
+            await finaliseOrder(buildOrderData(), response.razorpay_payment_id);
+          } else {
+            showToast('❌ Payment verification failed.', true);
+            setPlacing(false);
+          }
+        } catch (err) {
+          showToast('❌ Verification error: ' + err.message, true);
+          setPlacing(false);
+        }
+      },
     };
-    saveOrder(user.email, order);
-    clearCart();
-    navigate(`/order-success/${orderId}`);
+
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', (resp) => {
+      showToast(`Payment failed: ${resp.error.description}`, true);
+      setPlacing(false);
+    });
+    rzp.open();
+    // Don't setPlacing(false) here — handler or ondismiss will control it
   };
 
   /* ── Step navigation ── */

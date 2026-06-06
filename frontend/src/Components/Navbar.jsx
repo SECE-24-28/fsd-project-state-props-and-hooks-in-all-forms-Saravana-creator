@@ -1,13 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks';
 import { showToast } from './Toast';
+import { muiLogo } from '../Assets';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const getLinkClass = (path) => {
+    const isActive = location.pathname === path;
+    return isActive
+      ? "text-teal-400 font-bold text-sm transition-colors duration-200 text-decoration-none relative after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-0.5 after:bg-teal-400"
+      : "text-slate-300 hover:text-teal-400 font-medium text-sm transition-colors duration-200 text-decoration-none relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-teal-400 hover:after:w-full after:transition-all after:duration-300";
+  };
+
+  const getMobileLinkClass = (path) => {
+    const isActive = location.pathname === path;
+    return isActive
+      ? "text-teal-400 font-bold py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none"
+      : "text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none";
+  };
 
   // ── Cart hook – provides real-time cart count ──────────────────────────────
   const { cartCount } = useCart();
@@ -24,7 +39,9 @@ const Navbar = () => {
         <div className="container-xl d-flex align-items-center justify-content-between h-16 md:h-20 gap-4 p-0">
             {/* Logo */}
             <Link to="/" className="d-flex align-items-center gap-3 shrink-0 text-decoration-none">
-                <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-500 rounded-lg d-flex align-items-center justify-content-center font-serif font-extrabold text-xl text-slate-900 shadow-md shadow-teal-400/10">E</div>
+                <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-950 border border-slate-700 shadow-md shadow-teal-400/10">
+                  <img src={muiLogo} alt="Eazeit" className="w-full h-full object-cover" />
+                </div>
                 <div className="d-flex flex-column leading-none">
                     <span className="font-serif font-extrabold text-base tracking-widest text-teal-400">EAZEIT</span>
                     <span className="text-[8px] text-slate-400 tracking-[0.2em] uppercase mt-0.5">Anything Possible</span>
@@ -33,10 +50,10 @@ const Navbar = () => {
 
             {/* Desktop Nav Links */}
             <div className="d-none d-md-flex align-items-center gap-8 shrink-0">
-                <Link to="/" className="text-teal-400 font-medium text-sm transition-colors duration-200 text-decoration-none">Home</Link>
-                <Link to="/products" className="text-slate-300 hover:text-teal-400 font-medium text-sm transition-colors duration-200 text-decoration-none">Products</Link>
-                <Link to="/about" className="text-slate-300 hover:text-teal-400 font-medium text-sm transition-colors duration-200 text-decoration-none">About Us</Link>
-                <Link to="/contact" className="text-slate-300 hover:text-teal-400 font-medium text-sm transition-colors duration-200 text-decoration-none">Contact</Link>
+                <Link to="/" className={getLinkClass('/')}>Home</Link>
+                <Link to="/products" className={getLinkClass('/products')}>Products</Link>
+                <Link to="/about" className={getLinkClass('/about')}>About Us</Link>
+                <Link to="/contact" className={getLinkClass('/contact')}>Contact</Link>
             </div>
 
             {/* Desktop Search Bar */}
@@ -73,6 +90,11 @@ const Navbar = () => {
                 {/* Auth section */}
                 {user ? (
                   <div className="d-flex align-items-center gap-3">
+                    {user.role === 'admin' && (
+                      <Link to="/admin" className="text-purple-400 hover:text-purple-300 font-semibold text-xs border border-purple-400/30 px-2.5 py-1.5 rounded-lg text-decoration-none uppercase tracking-wider bg-purple-400/5 hover:bg-purple-400/10 transition-colors">
+                        👑 Admin
+                      </Link>
+                    )}
                     <Link to="/profile" className="text-teal-400 hover:text-teal-300 font-semibold text-sm transition-colors duration-200 text-decoration-none flex items-center gap-1.5">
                       Hello, {user.firstName}
                     </Link>
@@ -96,10 +118,10 @@ const Navbar = () => {
         {/* Mobile Dropdown */}
         <input type="checkbox" id="mobile-toggle" className="peer d-none" />
         <div className="d-none peer-checked:flex d-md-none position-absolute top-100 start-0 end-0 bg-slate-800 border-bottom border-slate-700 p-4 flex-column gap-3 shadow-xl animate-[fadeIn_0.2s_ease-out]">
-            <Link to="/" className="text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">Home</Link>
-            <Link to="/products" className="text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">Products</Link>
-            <Link to="/about" className="text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">About Us</Link>
-            <Link to="/contact" className="text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">Contact</Link>
+            <Link to="/" className={getMobileLinkClass('/')}>Home</Link>
+            <Link to="/products" className={getMobileLinkClass('/products')}>Products</Link>
+            <Link to="/about" className={getMobileLinkClass('/about')}>About Us</Link>
+            <Link to="/contact" className={getMobileLinkClass('/contact')}>Contact</Link>
             {/* Cart with badge in mobile menu */}
             <Link to="/cart" className="text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-flex align-items-center gap-2 transition-colors duration-200 text-decoration-none">
               🛒 Cart
@@ -109,6 +131,9 @@ const Navbar = () => {
             </Link>
             {user ? (
               <>
+                {user.role === 'admin' && (
+                  <Link to="/admin" className="text-purple-400 hover:text-purple-300 font-semibold py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">👑 Admin Panel</Link>
+                )}
                 <Link to="/profile" className="text-slate-300 hover:text-teal-400 font-medium py-2 border-bottom border-slate-700 text-sm d-block transition-colors duration-200 text-decoration-none">My Profile</Link>
                 <button onClick={handleLogout} className="text-rose-400 hover:text-rose-300 font-medium py-2 border-bottom border-slate-700 text-sm text-left d-block transition-colors duration-200 bg-transparent border-0 w-full p-0">Logout</button>
               </>

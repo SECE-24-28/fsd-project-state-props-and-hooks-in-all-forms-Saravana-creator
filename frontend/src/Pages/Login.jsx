@@ -8,7 +8,7 @@
  *
  * Props: None (page-level component)
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
@@ -38,7 +38,13 @@ const Login = () => {
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const navigate    = useNavigate();
-  const { login }   = useAuth();  // custom hook — handles sessionStorage write
+  const { login, user }   = useAuth();  // custom hook — handles sessionStorage write
+
+  useEffect(() => {
+    if (user) {
+      navigate('/profile');
+    }
+  }, [user, navigate]);
 
   // ── Submit handler ────────────────────────────────────────────────────────
   const handleLoginSubmit = async (e) => {

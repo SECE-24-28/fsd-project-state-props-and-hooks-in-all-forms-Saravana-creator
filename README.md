@@ -1,45 +1,161 @@
-# Annachi Kadai - E-Commerce Frontend
+# EAZEIT Annachi Kadai
 
-An E-Commerce frontend application built with React, focusing on state management, props, and React hooks. This is a Full Stack Development course assignment.
+A full-stack grocery and ecommerce application built with React on the frontend and Express/MongoDB on the backend. The project includes authentication, product browsing, cart and checkout flows, contact feedback with EmailJS support, order persistence, and admin features.
 
-## 🛒 Features
+## 🚀 What’s Included
 
-- **Product Catalog**: Browse and view available products.
-- **Shopping Cart**: Add, update, and remove items from the cart. Managed centrally via `CartContext`.
-- **Checkout Process**: Enter delivery details and finalize orders.
-- **Order Success**: Confirmation page upon successful checkout.
-- **User Authentication (Login)**: Simple mock login interface.
-- **User Profile**: View user information and order history.
-- **Contact Page**: Reach out for support or inquiries.
-- **Toast Notifications**: Interactive feedback for user actions.
+- React frontend with `react-router-dom`, Context API and reusable components.
+- Express backend with JWT authentication, MongoDB persistence, and secured API routes.
+- Contact page integration using EmailJS and backend feedback storage.
+- Razorpay payment order creation and verification support.
+- Admin-only product management and feedback listing.
+- Production-ready static serving from backend when deployed.
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
-The project code is primarily located in the `src` directory:
+- `backend/`
+  - `Server.js` — Express app entrypoint.
+  - `Controllers/` — Business logic for users, orders, products, payments, feedback.
+  - `Models/` — Mongoose schemas for users, products, orders, feedback.
+  - `Routers/` — Express router definitions.
+  - `Utils/` — Authentication middleware and helpers.
+  - `.env` — Backend environment variables.
 
-- `Components/` - Reusable UI components (e.g., `Navbar.js`, `Toast.js`).
-- `Pages/` - Core views (e.g., `Cart.js`, `Checkout.js`, `Products.js`).
-- `context/` - React Context definitions for global state (e.g., `CartContext.js`).
-- `data/` - Static mock data for products (`products.js`).
-- `Router/` - Application routing logic (`AppRouter.js`).
-- `utils/` - Helper functions for managing local storage, addresses, and orders.
+- `frontend/`
+  - `src/` — React app sources.
+  - `src/components/` — Shared UI components.
+  - `src/pages/` — Route pages like Home, Products, Cart, Profile, Contact.
+  - `src/context/` — Global state providers.
+  - `src/utils/` — API wrapper, storage helpers and common utilities.
+  - `.env` — Frontend environment variables.
 
-## 🚀 Getting Started
+## ✅ Core Features
 
-Since this is a standard React application:
+- User registration, login, logout, and profile editing.
+- Product listing, product details, and shopping cart.
+- Checkout with address, payment method, and order confirmation.
+- Contact form that sends EmailJS email notifications and persists feedback.
+- Admin dashboard links for product management and feedback review.
+- Responsive layout with modern Tailwind-inspired styling.
 
-1. **Install Dependencies** (Ensure you have a valid `package.json`):
+## 🧩 Environment Setup
+
+### Backend
+
+Create or update `backend/.env` with:
+
+```env
+NODE_ENV=development
+MONGO_URL=<your-mongodb-connection-string>
+PORT=5000
+JWT_SECRET=<your-jwt-secret>
+ADMIN_EMAIL=admin@eazeit.in
+ADMIN_PASSWORD=Admin@123
+ALLOWED_ORIGINS=http://localhost:3000
+RAZORPAY_KEY_ID=<your-razorpay-key-id>
+RAZORPAY_KEY_SECRET=<your-razorpay-key-secret>
+```
+
+### Frontend
+
+Create or update `frontend/.env` with:
+
+```env
+REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_NAME=EAZEIT Annachi Kadai
+REACT_APP_VERSION=2.0.0
+REACT_APP_EMAILJS_SERVICE_ID=sara24052007
+REACT_APP_EMAILJS_TEMPLATE_ID=template_l8lwjue
+REACT_APP_EMAILJS_USER_ID=<your-emailjs-user-id>
+```
+
+> If you do not want to commit active environment values, be sure `.env` is ignored by Git.
+
+## 🛠️ Setup and Run Locally
+
+1. Install backend dependencies:
+
    ```bash
+   cd backend
    npm install
    ```
 
-2. **Start the Development Server**:
+2. Install frontend dependencies:
+
    ```bash
+   cd ../frontend
+   npm install
+   ```
+
+3. Start the backend server:
+
+   ```bash
+   cd ../backend
+   npm run dev
+   ```
+
+4. Start the frontend app:
+
+   ```bash
+   cd ../frontend
    npm start
    ```
-   The app will run in development mode. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-## 🛠️ Technologies Used
-- React
-- React Router (for navigation)
-- Context API (for state management)
+5. Open the app in your browser at `http://localhost:3000`.
+
+## 🌐 API Endpoints
+
+### Authentication
+
+- `POST /api/users/signup`
+- `POST /api/users/login`
+- `GET /api/users/profile/:email`
+- `PUT /api/users/profile/:email`
+
+### Products
+
+- `GET /api/products`
+- `POST /api/products` (admin)
+- `PUT /api/products/:id` (admin)
+- `DELETE /api/products/:id` (admin)
+
+### Orders
+
+- `POST /api/orders`
+- `GET /api/orders/user/:email`
+- `GET /api/orders/:id`
+- `PUT /api/orders/:id/status` (admin)
+
+### Payments
+
+- `POST /api/payment/create-order`
+- `POST /api/payment/verify`
+
+### Feedback
+
+- `POST /api/feedback`
+- `GET /api/feedback` (admin)
+
+## 📦 Production Build
+
+From the frontend folder:
+
+```bash
+npm run build
+```
+
+Then start the backend server. In production mode, `backend/Server.js` serves the compiled frontend from `frontend/build`.
+
+## 💡 Notes
+
+- The frontend uses `sessionStorage` for auth tokens.
+- The contact form sends emails through EmailJS and also saves messages to the backend.
+- `backend/.env` should contain secure values for MongoDB, JWT, and Razorpay keys.
+- `frontend/.env` should contain EmailJS public identifiers and the API base URL.
+
+## 📌 Removed Files
+
+- `COMPLETE_PROJECT_DOCUMENTATION.md`
+- `MASTER_PROMPT_COMPLETE.md`
+
+These files were removed to keep the repository focused on the application source and deployment docs.
