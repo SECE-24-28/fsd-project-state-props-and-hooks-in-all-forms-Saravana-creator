@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
+import { resolveProductImage } from '../utils/image';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ const Cart = () => {
                   <div key={item.productId} className="bg-slate-800 border border-slate-700 rounded-xl p-4 md:p-5 flex flex-col md:flex-row gap-4 md:items-center">
                     <div className="w-full md:w-28 h-24 bg-slate-700 rounded-lg overflow-hidden flex items-center justify-center">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={resolveProductImage(item.image)} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-3xl">📦</span>
                       )}

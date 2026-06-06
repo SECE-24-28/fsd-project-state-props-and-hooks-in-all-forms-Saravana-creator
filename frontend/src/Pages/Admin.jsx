@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../hooks';
 import { showToast } from '../components/Toast';
+import { resolveProductImage } from '../utils/image';
 import {
   apiGetAllOrders,
   apiGetOrderStats,
@@ -29,6 +30,13 @@ const STATUS_COLORS = {
   Delivered:  'bg-green-400/10 text-green-400 border-green-400/20',
   Cancelled:  'bg-rose-400/10 text-rose-400 border-rose-400/20',
 };
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+  reader.readAsDataURL(file);
+});
 
 // ── Stat Card ─────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, sub, color = 'text-white' }) => (
@@ -146,13 +154,33 @@ const Admin = () => {
       showToast('Please fill in required fields (Name, Category, Price)', true);
       return;
     }
+    const payload = {
+      ...addForm,
+      image: resolveProductImage(addForm.image),
+    };
+
     try {
-      await addProduct(addForm);
+      await addProduct(payload);
       showToast(`"${addForm.name}" added successfully!`);
       setAddForm(EMPTY_FORM);
       setActiveSection('dashboard');
     } catch (err) {
       showToast('Error adding product: ' + err.message, true);
+    }
+  };
+
+  const handleAddImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file.', true);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setAddForm((prev) => ({ ...prev, image: dataUrl }));
+    } catch (err) {
+      showToast('Unable to load image file.', true);
     }
   };
 
@@ -169,11 +197,29 @@ const Admin = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await updateProduct(editingId, editForm);
+      await updateProduct(editingId, {
+        ...editForm,
+        image: resolveProductImage(editForm.image),
+      });
       showToast('Product updated successfully!');
       setEditingId(null);
     } catch (err) {
       showToast('Error updating product.', true);
+    }
+  };
+
+  const handleEditImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file.', true);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setEditForm((prev) => ({ ...prev, image: dataUrl }));
+    } catch (err) {
+      showToast('Unable to load image file.', true);
     }
   };
 
@@ -430,9 +476,23 @@ const Admin = () => {
                   </div>
                   <div className="flex flex-col gap-1.5 md:col-span-2">
                     <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Product Image URL <span className="text-slate-500 font-normal normal-case">(optional)</span></label>
-                    <input type="text" value={addForm.image} onChange={(e) => setAddForm({ ...addForm, image: e.target.value })} className={inputCls} />
+                    <input
+                      type="text"
+                      value={addForm.image}
+                      onChange={(e) => setAddForm({ ...addForm, image: e.target.value })}
+                      onBlur={(e) => setAddForm((prev) => ({ ...prev, image: resolveProductImage(e.target.value) }))}
+                      className={inputCls}
+                      placeholder="Paste any image URL or Google Drive share link"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAddImageFile}
+                      className="mt-2 text-sm text-slate-300 file:bg-slate-700 file:border-0 file:px-3 file:py-2 file:rounded-lg file:text-sm file:text-teal-400"
+                    />
+                    <p className="text-xs text-slate-500">Upload JPEG/PNG/WebP or paste a Google Drive image link. Uploaded files are shown immediately.</p>
                     {addForm.image && (
-                      <img src={addForm.image} alt="preview" className="mt-2 h-24 w-24 object-cover rounded-lg border border-slate-600" onError={(e) => { e.target.style.display = 'none'; }} />
+                      <img src={resolveProductImage(addForm.image)} alt="preview" className="mt-2 h-24 w-24 object-cover rounded-lg border border-slate-600" onError={(e) => { e.target.style.display = 'none'; }} />
                     )}
                   </div>
                   <div className="md:col-span-2 flex gap-3 pt-2">
@@ -476,7 +536,7 @@ const Admin = () => {
                         <div key={pid} className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 hover:bg-slate-700/20 transition-colors">
                           <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0 text-2xl">
                             {p.image
-                              ? <img src={p.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                              ? <img src={resolveProductImage(p.image)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                               : <span>{CAT_EMOJI[p.category] || '📦'}</span>}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -715,9 +775,23 @@ const Admin = () => {
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Image URL</label>
-                <input type="text" value={editForm.image} onChange={(e) => setEditForm({ ...editForm, image: e.target.value })} className={inputCls} />
+                <input
+                  type="text"
+                  value={editForm.image}
+                  onChange={(e) => setEditForm({ ...editForm, image: e.target.value })}
+                  onBlur={(e) => setEditForm((prev) => ({ ...prev, image: resolveProductImage(e.target.value) }))}
+                  className={inputCls}
+                  placeholder="Paste any image URL or Google Drive share link"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageFile}
+                  className="mt-2 text-sm text-slate-300 file:bg-slate-700 file:border-0 file:px-3 file:py-2 file:rounded-lg file:text-sm file:text-teal-400"
+                />
+                <p className="text-xs text-slate-500">Upload JPEG/PNG/WebP or paste a Google Drive image link. Uploaded files show instantly.</p>
                 {editForm.image && (
-                  <img src={editForm.image} alt="preview" className="mt-2 h-20 w-20 object-cover rounded-lg border border-slate-600" onError={(e) => { e.target.style.display = 'none'; }} />
+                  <img src={resolveProductImage(editForm.image)} alt="preview" className="mt-2 h-20 w-20 object-cover rounded-lg border border-slate-600" onError={(e) => { e.target.style.display = 'none'; }} />
                 )}
               </div>
               <div className="sm:col-span-2 flex gap-3 pt-1">

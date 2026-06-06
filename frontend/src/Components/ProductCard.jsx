@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks';
 import { showToast } from './Toast';
+import { resolveProductImage } from '../utils/image';
 
 const CAT_EMOJI = {
   'Oral Care': '🦷',
@@ -37,6 +38,11 @@ const ProductCard = ({ product, compact = false }) => {
   const qtyInCart = cartItem ? cartItem.qty : 0;
 
   const [adding, setAdding] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [product.image]);
 
   const discount =
     product.mrp && product.mrp > product.price
@@ -80,11 +86,12 @@ const ProductCard = ({ product, compact = false }) => {
         className="relative w-full bg-slate-800 border-b border-slate-700 overflow-hidden flex items-center justify-center"
         style={{ height: compact ? '160px' : '192px' }}
       >
-        {product.image ? (
+        {product.image && !imgError ? (
           <img
-            src={product.image}
+            src={resolveProductImage(product.image)}
             alt={product.name}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full bg-slate-700 flex items-center justify-center">

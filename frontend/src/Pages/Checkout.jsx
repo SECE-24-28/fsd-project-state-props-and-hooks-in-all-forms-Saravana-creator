@@ -10,8 +10,7 @@ import {
 } from '../utils/addresses';
 import { generateOrderId, saveOrder } from '../utils/orders';
 import { showToast } from '../components/Toast';
-import { apiPlaceOrder, createRazorpayOrder, verifyRazorpayPayment } from '../utils/api';
-
+import { apiPlaceOrder, createRazorpayOrder, verifyRazorpayPayment } from '../utils/api';import { resolveProductImage } from '../utils/image';
 /** Dynamically loads the Razorpay checkout script */
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -404,7 +403,7 @@ const Checkout = () => {
                     <div key={item.productId} className="flex items-center gap-4 border border-slate-700 rounded-xl p-3 hover:border-slate-600 transition-colors">
                       <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
                         {item.image
-                          ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          ? <img src={resolveProductImage(item.image)} alt={item.name} className="w-full h-full object-cover" />
                           : <span className="text-2xl">📦</span>}
                       </div>
                       <div className="flex-1 min-w-0">

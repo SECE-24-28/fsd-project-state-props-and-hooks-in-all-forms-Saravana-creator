@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
+import { resolveProductImage } from '../utils/image';
 import ProductCard from '../components/ProductCard';
 
 /**
@@ -210,7 +211,7 @@ const Home = () => {
                   <div key={p.id} className={i === 0 ? 'col-12' : 'col-6'}>
                     <div className={`rounded-xl border border-slate-700 bg-slate-800 overflow-hidden ${i === 0 ? 'h-60 md:h-72' : 'h-36 md:h-40'} flex items-center justify-center`}>
                       {p.image ? (
-                        <img src={p.image} alt={p.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                        <img src={resolveProductImage(p.image)} alt={p.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                       ) : (
                         <span className="text-5xl">{['🦷', '🧹', '🧼', '💊', '📦'][i] || '📦'}</span>
                       )}
@@ -273,7 +274,7 @@ const Home = () => {
                   >
                     <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden border-2 border-slate-700 group-hover:border-teal-400 transition-colors duration-300 flex items-center justify-center bg-slate-800">
                       {sample ? (
-                        <img src={sample.image} alt={cat.label} className="w-full h-full object-cover" />
+                        <img src={resolveProductImage(sample.image)} alt={cat.label} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-4xl">{cat.emoji}</span>
                       )}
